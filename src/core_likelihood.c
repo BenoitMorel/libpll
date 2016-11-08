@@ -33,6 +33,8 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               const int * invar_indices,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl,
+                                              const unsigned int * clv_lookup,
+
                                               unsigned int attrib)
 {
   unsigned int i,j,k,m = 0;
@@ -45,6 +47,9 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   double site_lk, inv_site_lk;
 
   unsigned int states_padded = states;
+  
+  unsigned int userepeats = (attrib & PLL_ATTRIB_SITES_REPEATS) && clv_lookup;
+  const double * startclv = clv;
 
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
@@ -121,10 +126,11 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   }
   #endif
 
-
   /* iterate through sites */
   for (i = 0; i < sites; ++i)
   {
+    if (userepeats) 
+      clv = startclv + (rate_cats * states * (clv_lookup[i] - 1));
     term = 0;
     for (j = 0; j < rate_cats; ++j)
     {

@@ -87,6 +87,9 @@
 #define PLL_ATTRIB_AB_MASK         (7 << 5)
 #define PLL_ATTRIB_AB_FLAG         (1 << 8)
 
+/* sites repeats */
+#define PLL_ATTRIB_SITES_REPEATS    (1 << 9)
+
 /* topological rearrangements */
 
 #define PLL_UTREE_MOVE_SPR                  1
@@ -130,7 +133,31 @@
 #define PLL_UTREE_SHOW_SCALER_INDEX      (1 << 3)
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
 
+/* repeats specific */
+#define REPEATS_LOOKUP_SIZE 1000
+
+
 /* structures and data types */
+
+typedef struct pll_repeats
+{
+  // [node][site] -> class identifier (starts at 1)
+  unsigned int **pernode_site_id; 
+  // [node] -> max class identifier. 
+  // 0 means that repeat were not computed for this node
+  unsigned int *pernode_max_id;
+  // [node] -> number of allocated clvs
+  unsigned int *pernode_allocated_clvs;
+ 
+  /* temporary buffers */ 
+  /* map id1 id2 -> idparent */
+  unsigned int *lookup_buffer;  
+  /* list of elem in lookup_buffer to clean */
+  unsigned int *toclean_buffer; 
+  /* class identifier -> first site for the tip we are adding */
+  unsigned int *id_to_firstsite_buffer; 
+
+} pll_repeats_t;
 
 typedef struct pll_partition
 {
@@ -176,6 +203,9 @@ typedef struct pll_partition
 
   /* ascertainment bias correction */
   int asc_bias_alloc;
+
+  /* site repeats */
+  pll_repeats_t *repeats;
 } pll_partition_t;
 
 
@@ -695,6 +725,9 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
+                                           const unsigned int * parent_clvlookup,
+                                           const unsigned int * left_clvlookup,
+                                           const unsigned int * right_clvlookup,
                                            unsigned int attrib);
 
 PLL_EXPORT void pll_core_create_lookup_4x4(unsigned int rate_cats,
@@ -838,6 +871,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               const int * invar_indices,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl,
+                                              const unsigned int * clvlookup,
                                               unsigned int attrib);
 
 /* functions in core_partials_sse.c */

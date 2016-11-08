@@ -411,6 +411,9 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
+                                           const unsigned int * left_clvlookup,
+                                           const unsigned int * right_clvlookup,
+                                           const unsigned int * parent_clvlookup,
                                            unsigned int attrib)
 {
   unsigned int i,j,k,n;
@@ -419,8 +422,12 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   const double * lmat;
   const double * rmat;
 
-  unsigned int span = states * rate_cats;
+  const double * lclv = left_clv;
+  const double * rclv = right_clv;
+  double * pclv = parent_clv;
 
+  unsigned int span = states * rate_cats;
+  unsigned int userepeats = attrib & PLL_ATTRIB_SITES_REPEATS;
 #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
@@ -466,7 +473,14 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
     lmat = left_matrix;
     rmat = right_matrix;
     scaling = (parent_scaler) ? 1 : 0;
-
+    if (userepeats) {
+      if (left_clvlookup)
+        left_clv   = (lclv + (states * rate_cats * (left_clvlookup[n] - 1)));
+      if (right_clvlookup)
+        right_clv   = (rclv + (states * rate_cats * (right_clvlookup[n] - 1)));
+      if (parent_clvlookup)
+        parent_clv   = (pclv + (states * rate_cats * (parent_clvlookup[n] - 1)));
+    }
     for (k = 0; k < rate_cats; ++k)
     {
       for (i = 0; i < states; ++i)
