@@ -411,9 +411,10 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
-                                           const unsigned int * left_clvlookup,
-                                           const unsigned int * right_clvlookup,
-                                           const unsigned int * parent_clvlookup,
+                                           const unsigned int * parent_id_to_site,
+                                           const unsigned int * left_site_to_id,
+                                           const unsigned int * right_site_to_id,
+                                           const unsigned int parent_ids,
                                            unsigned int attrib)
 {
   unsigned int i,j,k,n;
@@ -467,19 +468,20 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   if (parent_scaler)
     fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
 
+  unsigned int max_clv = (parent_id_to_site && parent_ids) ? 
+                          parent_ids : sites;
   /* compute CLV */
-  for (n = 0; n < sites; ++n)
+  for (n = 0; n < max_clv; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
     scaling = (parent_scaler) ? 1 : 0;
     if (userepeats) {
-      if (left_clvlookup)
-        left_clv   = (lclv + (states * rate_cats * (left_clvlookup[n] - 1)));
-      if (right_clvlookup)
-        right_clv   = (rclv + (states * rate_cats * (right_clvlookup[n] - 1)));
-      if (parent_clvlookup)
-        parent_clv   = (pclv + (states * rate_cats * (parent_clvlookup[n] - 1)));
+      unsigned int site = parent_id_to_site ? parent_id_to_site[n] : n;
+      if (left_site_to_id)
+        left_clv   = (lclv + (states * rate_cats * (left_site_to_id[site] - 1)));
+      if (right_site_to_id)
+        right_clv   = (rclv + (states * rate_cats * (right_site_to_id[site] - 1)));
     }
     for (k = 0; k < rate_cats; ++k)
     {

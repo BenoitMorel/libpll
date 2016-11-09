@@ -134,7 +134,7 @@
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
 
 /* repeats specific */
-#define REPEATS_LOOKUP_SIZE 1000
+#define REPEATS_LOOKUP_SIZE 1000000
 
 
 /* structures and data types */
@@ -143,6 +143,8 @@ typedef struct pll_repeats
 {
   // [node][site] -> class identifier (starts at 1)
   unsigned int **pernode_site_id; 
+  // [node][id] -> class site   
+  unsigned int **pernode_id_site; 
   // [node] -> max class identifier. 
   // 0 means that repeat were not computed for this node
   unsigned int *pernode_max_id;
@@ -725,9 +727,10 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
-                                           const unsigned int * parent_clvlookup,
-                                           const unsigned int * left_clvlookup,
-                                           const unsigned int * right_clvlookup,
+                                           const unsigned int * parent_id_to_site,
+                                           const unsigned int * left_site_to_id,
+                                           const unsigned int * right_site_to_id,
+                                           const unsigned int parent_ids,
                                            unsigned int attrib);
 
 PLL_EXPORT void pll_core_create_lookup_4x4(unsigned int rate_cats,
@@ -825,6 +828,8 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                  const int * invar_indices,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl,
+                                                 const unsigned int * parent_clv_lookup,
+                                                 const unsigned int * child_clv_lookup,
                                                  unsigned int attrib);
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ti(unsigned int states,

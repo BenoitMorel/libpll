@@ -496,6 +496,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       const int * invar_indices,
                                       const unsigned int * freqs_indices,
                                       double * persite_lnl,
+                                      const unsigned int * parent_clv_lookup,
+                                      const unsigned int * child_clv_lookup,
                                       unsigned int attrib)
 {
   unsigned int n,i,j,k,m = 0;
@@ -515,6 +517,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   /* TODO: We need states_padded in the AVX/SSE implementations 
   */
   unsigned int states_padded = states;
+
+  unsigned int userepeats = (attrib & PLL_ATTRIB_SITES_REPEATS);
 
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
@@ -607,6 +611,10 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   {
     pmat = pmatrix;
     terma = 0;
+    if (userepeats && parent_clv_lookup)
+        clvp = parent_clv + (rate_cats * states * (parent_clv_lookup[n] - 1));
+    if (userepeats && child_clv_lookup)
+        clvc = child_clv + (rate_cats * states * (child_clv_lookup[n] - 1));
     for (i = 0; i < rate_cats; ++i)
     {
       freqs = frequencies[freqs_indices[i]];

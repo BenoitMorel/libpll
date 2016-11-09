@@ -425,6 +425,17 @@ static double edge_loglikelihood(pll_partition_t * partition,
   unsigned int * parent_scaler;
   unsigned int * child_scaler;
 
+  /* repeats lookups */
+  unsigned int * parent_clv_lookup = NULL;
+  unsigned int * child_clv_lookup = NULL;
+  if ((partition->attributes & PLL_ATTRIB_SITES_REPEATS) && partition->repeats) 
+  {
+    if (partition->repeats->pernode_max_id[parent_clv_index]) 
+      parent_clv_lookup = partition->repeats->pernode_site_id[parent_clv_index];
+    if (partition->repeats->pernode_max_id[child_clv_index]) 
+      child_clv_lookup = partition->repeats->pernode_site_id[child_clv_index];
+  }
+
   if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
     child_scaler = NULL;
   else
@@ -451,6 +462,8 @@ static double edge_loglikelihood(pll_partition_t * partition,
                                         partition->invariant,
                                         freqs_indices,
                                         persite_lnl,
+                                        parent_clv_lookup,
+                                        child_clv_lookup,
                                         partition->attributes);
 
   /* ascertainment bias correction */
