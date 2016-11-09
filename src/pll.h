@@ -141,23 +141,22 @@
 
 typedef struct pll_repeats
 {
-  // [node][site] -> class identifier (starts at 1)
+  /* nodes for which we dont compute sites repeats */
+  /* are caracterized by pernode_max_id[node] == 0 */
+  
+  /* (node,site) -> class identifier (starts at 1) */
   unsigned int **pernode_site_id; 
-  // [node][id] -> class site   
+  // (node,id) -> class site   
   unsigned int **pernode_id_site; 
-  // [node] -> max class identifier. 
-  // 0 means that repeat were not computed for this node
+  // (node) -> max class identifier. 
   unsigned int *pernode_max_id;
-  // [node] -> number of allocated clvs
+  // (node) -> number of allocated clvs
   unsigned int *pernode_allocated_clvs;
  
   /* temporary buffers */ 
-  /* map id1 id2 -> idparent */
   unsigned int *lookup_buffer;  
-  /* list of elem in lookup_buffer to clean */
   unsigned int *toclean_buffer; 
-  /* class identifier -> first site for the tip we are adding */
-  unsigned int *id_to_firstsite_buffer; 
+  unsigned int *id_site_buffer; 
 
 } pll_repeats_t;
 

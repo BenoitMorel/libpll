@@ -133,7 +133,8 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   const unsigned int * clv_lookup = NULL;
 
   if ((partition->attributes & PLL_ATTRIB_SITES_REPEATS) && partition->repeats
-      && partition->repeats->pernode_max_id[clv_index]) {
+      && partition->repeats->pernode_max_id[clv_index]) 
+  {
     clv_lookup = partition->repeats->pernode_site_id[clv_index];
   }
 

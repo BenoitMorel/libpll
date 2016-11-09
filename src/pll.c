@@ -108,7 +108,8 @@ static void dealloc_partition_data(pll_partition_t * partition)
   {
     pll_repeats_t *repeats = partition->repeats;
     unsigned int nodes_number = partition->clv_buffers+partition->tips;
-    for (i = 0; i < nodes_number; ++i) { 
+    for (i = 0; i < nodes_number; ++i) 
+    { 
       free(repeats->pernode_site_id[i]);
       free(repeats->pernode_id_site[i]);
     }
@@ -118,7 +119,7 @@ static void dealloc_partition_data(pll_partition_t * partition)
     free(repeats->pernode_allocated_clvs);
     free(repeats->lookup_buffer);
     free(repeats->toclean_buffer);
-    free(repeats->id_to_firstsite_buffer);
+    free(repeats->id_site_buffer);
     free(repeats);
   }
   free(partition);
@@ -864,10 +865,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     repeats->pernode_allocated_clvs = calloc(nodes_number, sizeof(unsigned int));
     repeats->lookup_buffer = calloc(REPEATS_LOOKUP_SIZE, sizeof(unsigned int));
     repeats->toclean_buffer = malloc(partition->sites * sizeof(unsigned int));
-    repeats->id_to_firstsite_buffer = malloc(partition->sites * sizeof(unsigned int));
+    repeats->id_site_buffer = malloc(partition->sites * sizeof(unsigned int));
     if (!(repeats->pernode_max_id && repeats->lookup_buffer
          && repeats->pernode_allocated_clvs
-         && repeats->toclean_buffer && repeats->id_to_firstsite_buffer)) 
+         && repeats->toclean_buffer && repeats->id_site_buffer)) 
     {
       dealloc_partition_data(partition);
       pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -1037,7 +1038,7 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     unsigned int s;
     pll_repeats_t * repeats = partition->repeats;
     unsigned int * toclean_buffer = repeats->toclean_buffer;
-    unsigned int * id_to_firstsite_buffer = repeats->id_to_firstsite_buffer;
+    unsigned int * id_site_buffer = repeats->id_site_buffer;
     unsigned int * lookup_buffer = repeats->lookup_buffer;
     unsigned int ** site_ids = repeats->pernode_site_id;
     unsigned int ** id_site = repeats->pernode_id_site;
@@ -1049,7 +1050,7 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
       if (!lookup_buffer[index_lookup]) 
       {
         toclean_buffer[curr_id] = index_lookup;
-        id_to_firstsite_buffer[curr_id] = s;
+        id_site_buffer[curr_id] = s;
         lookup_buffer[index_lookup] = ++curr_id;
       }
       site_ids[tip_index][s] = repeats->lookup_buffer[index_lookup];
@@ -1059,7 +1060,7 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     id_site[tip_index] = malloc(sizeof(unsigned int) * curr_id);
     for (s = 0; s < curr_id; ++s) 
     {
-      id_site[tip_index][s] = id_to_firstsite_buffer[s];
+      id_site[tip_index][s] = id_site_buffer[s];
       lookup_buffer[toclean_buffer[s]] = 0;
     }
     /* If pattern tip is not enabled, we need to allocate the clvs for the tip */

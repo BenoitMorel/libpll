@@ -194,7 +194,7 @@ static void case_innerinner(pll_partition_t * partition,
 
 
 /* Fill the repeat structure in partition for the parent node of op */
-void update_repeats(pll_partition_t * partition,
+static void update_repeats(pll_partition_t * partition,
                     const pll_operation_t * op) 
 {
   pll_repeats_t * repeats = partition->repeats;
@@ -204,7 +204,7 @@ void update_repeats(pll_partition_t * partition,
   unsigned int ** site_ids = repeats->pernode_site_id;
   unsigned int ** id_site = repeats->pernode_id_site;
   unsigned int * toclean_buffer = repeats->toclean_buffer;
-  unsigned int * id_to_firstsite_buffer = repeats->id_to_firstsite_buffer;
+  unsigned int * id_site_buffer = repeats->id_site_buffer;
   unsigned int curr_id = 0;
   unsigned int sizealloc = 1;
   unsigned int clv_size = partition->states_padded * 
@@ -229,7 +229,7 @@ void update_repeats(pll_partition_t * partition,
       if (!repeats->lookup_buffer[index_lookup]) 
       {
         toclean_buffer[curr_id] = index_lookup;
-        id_to_firstsite_buffer[curr_id] = s;
+        id_site_buffer[curr_id] = s;
         repeats->lookup_buffer[index_lookup] = ++curr_id;
       }
       site_ids[parent][s] = repeats->lookup_buffer[index_lookup];
@@ -243,7 +243,7 @@ void update_repeats(pll_partition_t * partition,
     }
     for (s = 0; s < curr_id; ++s) 
     {
-      id_site[parent][s] = id_to_firstsite_buffer[s];
+      id_site[parent][s] = id_site_buffer[s];
       repeats->lookup_buffer[toclean_buffer[s]] = 0;
     }
   }

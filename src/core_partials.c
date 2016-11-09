@@ -476,7 +476,8 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
     lmat = left_matrix;
     rmat = right_matrix;
     scaling = (parent_scaler) ? 1 : 0;
-    if (userepeats) {
+    if (userepeats) 
+    {
       unsigned int site = parent_id_to_site ? parent_id_to_site[n] : n;
       if (left_site_to_id)
         left_clv   = (lclv + (states * rate_cats * (left_site_to_id[site] - 1)));
