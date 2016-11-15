@@ -45,6 +45,10 @@ static void dealloc_partition_data(pll_partition_t * partition)
     for (i = 0; i < partition->scale_buffers; ++i)
       free(partition->scale_buffer[i]);
   free(partition->scale_buffer);
+  if (partition->persite_scales)
+    for (i = 0; i < partition->scale_buffers; ++i)
+      free(partition->persite_scales[i]);
+  free(partition->persite_scales);
 
   if (partition->tipchars)
     for (i = 0; i < partition->tips; ++i)
@@ -488,6 +492,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->rate_weights = NULL;
   partition->subst_params = NULL;
   partition->scale_buffer = NULL;
+  partition->persite_scales = NULL;
   partition->frequencies = NULL;
   partition->eigen_decomp_valid = 0;
 
@@ -811,7 +816,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   /* scale_buffer */
   partition->scale_buffer = (unsigned int **)calloc(partition->scale_buffers,
                                                     sizeof(unsigned int *));
-  if (!partition->scale_buffer)
+  partition->persite_scales = (unsigned int ***)calloc(partition->scale_buffers,
+                                                    sizeof(unsigned int **));
+  if (!partition->scale_buffer || !partition->persite_scales)
   {
     dealloc_partition_data(partition);
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -820,18 +827,33 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
              "Unable to allocate enough memory for scale buffers.");
     return PLL_FAILURE;
   }
+
   for (i = 0; i < partition->scale_buffers; ++i)
   {
-    partition->scale_buffer[i] = (unsigned int *)calloc(sites_alloc,
-                                                        sizeof(unsigned int));
-    if (!partition->scale_buffer[i])
+    partition->persite_scales[i] = (unsigned int **) calloc(sites_alloc,
+                                                         sizeof(unsigned int*));
+  }
+
+  /* scales will be allocated later if we use site repeats */
+  if (!userepeats) 
+  {
+    for (i = 0; i < partition->scale_buffers; ++i)
     {
-      dealloc_partition_data(partition);
-      pll_errno = PLL_ERROR_MEM_ALLOC;
-      snprintf(pll_errmsg,
-               200,
-               "Unable to allocate enough memory for scale buffers.");
-      return PLL_FAILURE;
+      partition->scale_buffer[i] = (unsigned int *)calloc(sites_alloc,
+                                                        sizeof(unsigned int));
+      if (!partition->scale_buffer[i])
+      {
+        dealloc_partition_data(partition);
+        pll_errno = PLL_ERROR_MEM_ALLOC;
+        snprintf(pll_errmsg,
+                 200,
+                 "Unable to allocate enough memory for scale buffers.");
+        return PLL_FAILURE;
+      }
+      for (j = 0; j < sites_alloc; ++j) 
+      {
+        partition->persite_scales[i][j] = partition->scale_buffer[i] + j;
+      }
     }
   }
 

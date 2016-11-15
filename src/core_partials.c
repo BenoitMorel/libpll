@@ -21,6 +21,63 @@
 
 #include "pll.h"
 
+
+static void fill_parent_scaler_2(const unsigned int *sites,
+                               unsigned int sites_number,
+                               unsigned int ** parent_scaler,
+                               unsigned int ** left_scaler,
+                               unsigned int ** right_scaler)
+{
+  unsigned int i;
+  if (sites) 
+  {
+    if (!left_scaler && !right_scaler) 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[sites[i]] = 0;
+    } 
+    else if (left_scaler && right_scaler) 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[sites[i]] = *left_scaler[sites[i]] + *right_scaler[sites[i]];
+    }
+    else if (left_scaler) 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[sites[i]] = *left_scaler[sites[i]];
+    }
+    else 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[sites[i]] = *right_scaler[sites[i]];
+    } 
+  } 
+  else 
+  {
+    if (!left_scaler && !right_scaler) 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[i] = 0;
+    } 
+    else if (left_scaler && right_scaler) 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[i] = *left_scaler[i] + *right_scaler[i];
+    }
+    else if (left_scaler) 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[i] = *left_scaler[i];
+    }
+    else 
+    {
+      for (i = 0; i < sites_number; ++i) 
+        *parent_scaler[i] = *right_scaler[i];
+    } 
+
+  }
+}
+
 static void fill_parent_scaler(unsigned int sites,
                                unsigned int * parent_scaler,
                                const unsigned int * left_scaler,
@@ -404,13 +461,13 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
                                            double ** parent_persite_clv,
-                                           unsigned int * parent_scaler,
+                                           unsigned int ** parent_scaler,
                                            double ** left_persite_clv,
                                            double ** right_persite_clv,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           const unsigned int * left_scaler,
-                                           const unsigned int * right_scaler,
+                                           unsigned int ** left_scaler,
+                                           unsigned int ** right_scaler,
                                            const unsigned int * sites_to_update,
                                            unsigned int sites_to_update_number,
                                            unsigned int attrib)
@@ -460,7 +517,8 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
 */
   /* add up the scale vectors of the two children if available */
   if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+    fill_parent_scaler_2(sites_to_update, sites_to_update_number,
+        parent_scaler, left_scaler, right_scaler);
   
   /* compute CLV */
   for (n = 0; n < sites_to_update_number; ++n)
@@ -501,7 +559,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
       for (i = 0; i < span; ++i)
         parent_clv[i] *= PLL_SCALE_FACTOR;
       parent_clv += span;
-      parent_scaler[n] += 1;
+      *parent_scaler[site] += 1;
     }
   }
 }

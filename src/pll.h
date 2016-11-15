@@ -186,6 +186,7 @@ typedef struct pll_partition
   double * rate_weights;
   double ** subst_params;
   unsigned int ** scale_buffer;
+  unsigned int *** persite_scales;
   double ** frequencies;
   double * prop_invar;
   int * invariant;
@@ -720,13 +721,13 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
                                            double ** parent_persite_clv,
-                                           unsigned int * parent_scaler,
+                                           unsigned int ** parent_scaler,
                                            double ** left_persite_clv,
                                            double ** right_persite_clv,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           const unsigned int * left_scaler,
-                                           const unsigned int * right_scaler,
+                                           unsigned int ** left_scaler,
+                                           unsigned int ** right_scaler,
                                            const unsigned int * sites_to_update,
                                            unsigned int sites_to_update_number,
                                            unsigned int attrib);
@@ -815,9 +816,9 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                  unsigned int sites,
                                                  unsigned int rate_cats,
                                                  double ** parent_persite_clv,
-                                                 const unsigned int * parent_scaler,
+                                                 unsigned int ** parent_persite_scaler,
                                                  double ** child_persite_clv,
-                                                 const unsigned int * child_scaler,
+                                                 unsigned int ** child_persite_scaler,
                                                  const double * pmatrix,
                                                  double ** frequencies,
                                                  const double * rate_weights,

@@ -481,9 +481,9 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       unsigned int sites,
                                       unsigned int rate_cats,
                                       double ** parent_persite_clv,
-                                      const unsigned int * parent_scaler,
+                                      unsigned int ** parent_persite_scaler,
                                       double ** child_persite_clv,
-                                      const unsigned int * child_scaler,
+                                      unsigned int ** child_persite_scaler,
                                       const double * pmatrix,
                                       double ** frequencies,
                                       const double * rate_weights,
@@ -639,8 +639,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
     }
 
     /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+    scale_factors = (parent_persite_scaler) ? *parent_persite_scaler[n] : 0;
+    scale_factors += (child_persite_scaler) ? *child_persite_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma) * pattern_weights[n];

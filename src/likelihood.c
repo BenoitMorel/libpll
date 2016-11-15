@@ -310,9 +310,9 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
 
 static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
                                              double ** persite_clvp,
-                                             unsigned int * parent_scaler,
+                                             unsigned int ** parent_persite_scaler,
                                              double ** persite_clvc,
-                                             unsigned int * child_scaler,
+                                             unsigned int ** child_persite_scaler,
                                              unsigned int matrix_index,
                                              const unsigned int * freqs_indices)
 {
@@ -332,8 +332,8 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
   double * rate_weights = partition->rate_weights;
 
   pattern_weights += partition->sites;
-  parent_scaler += partition->sites;
-  child_scaler += partition->sites;
+  parent_persite_scaler += partition->sites;
+  child_persite_scaler += partition->sites;
 
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
@@ -368,8 +368,8 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
     }
 
     /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+    scale_factors = (parent_persite_scaler) ? *parent_persite_scaler[n] : 0;
+    scale_factors += (child_persite_scaler) ? *child_persite_scaler[n] : 0;
 
     sum_w_inv += pattern_weights[n];
     if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
@@ -413,19 +413,19 @@ static double edge_loglikelihood(pll_partition_t * partition,
   double ** clvp = partition->persite_clv[parent_clv_index];
   double ** clvc = partition->persite_clv[child_clv_index];
 
-  unsigned int * parent_scaler;
-  unsigned int * child_scaler;
+  unsigned int ** parent_scaler;
+  unsigned int ** child_scaler;
 
 
   if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
     child_scaler = NULL;
   else
-    child_scaler = partition->scale_buffer[child_scaler_index];
+    child_scaler = partition->persite_scales[child_scaler_index];
 
   if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
     parent_scaler = NULL;
   else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
+    parent_scaler = partition->persite_scales[parent_scaler_index];
 
   /* compute log-likelihood via the core function */
   logl = pll_core_edge_loglikelihood_ii(partition->states,
@@ -451,6 +451,7 @@ static double edge_loglikelihood(pll_partition_t * partition,
     /* Note the assertion must be done for all rate matrices
     assert(prop_invar == 0);
     */
+
     logl += edge_loglikelihood_asc_bias_ii(partition,
                                            clvp,
                                            parent_scaler,

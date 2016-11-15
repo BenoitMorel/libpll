@@ -133,9 +133,9 @@ static void case_innerinner(pll_partition_t * partition,
   double ** parent_clv = partition->persite_clv[op->parent_clv_index];
   double ** left_clv = partition->persite_clv[op->child1_clv_index];
   double ** right_clv = partition->persite_clv[op->child2_clv_index];
-  unsigned int * parent_scaler;
-  unsigned int * left_scaler;
-  unsigned int * right_scaler;
+  unsigned int ** parent_scaler;
+  unsigned int ** left_scaler;
+  unsigned int ** right_scaler;
   unsigned int sites = partition->sites;
   unsigned int * sites_to_update = NULL; 
   unsigned int sites_to_update_number = sites; 
@@ -157,16 +157,16 @@ static void case_innerinner(pll_partition_t * partition,
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
     parent_scaler = NULL;
   else
-    parent_scaler = partition->scale_buffer[op->parent_scaler_index];
+    parent_scaler = partition->persite_scales[op->parent_scaler_index];
 
   if (op->child1_scaler_index != PLL_SCALE_BUFFER_NONE)
-    left_scaler = partition->scale_buffer[op->child1_scaler_index];
+    left_scaler = partition->persite_scales[op->child1_scaler_index];
   else
     left_scaler = NULL;
 
   /* if child2 has a scaler add its values to the parent scaler */
   if (op->child2_scaler_index != PLL_SCALE_BUFFER_NONE)
-    right_scaler = partition->scale_buffer[op->child2_scaler_index];
+    right_scaler = partition->persite_scales[op->child2_scaler_index];
   else
     right_scaler = NULL;
 
@@ -205,6 +205,7 @@ static void update_repeats(pll_partition_t * partition,
                               partition->rate_cats * sizeof(double);
   unsigned int min_size = repeats->pernode_max_id[left] 
                           * repeats->pernode_max_id[right];
+  unsigned int scaler_index = op->parent_scaler_index;
   // in case site repeats is activated but not used for this node
   unsigned int userepeats = !(!min_size || REPEATS_LOOKUP_SIZE <= min_size);
   if (!userepeats)
@@ -248,9 +249,14 @@ static void update_repeats(pll_partition_t * partition,
     // but not more than the max needed
     if (sizealloc > partition->sites) 
       sizealloc = partition->sites;
-    free(partition->clv[parent]);   
+    free(partition->clv[parent]);  
     partition->clv[parent] = pll_aligned_alloc(sizealloc * clv_size,
                                             partition->alignment);
+    if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+    { 
+      free(partition->scale_buffer[scaler_index]);
+      partition->scale_buffer[scaler_index] = calloc(sizealloc, sizeof(unsigned int));
+    }
     if (!partition->clv[parent]) 
     {
       pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -265,6 +271,11 @@ static void update_repeats(pll_partition_t * partition,
         partition->persite_clv[parent][s] = (partition->clv[parent]) 
             + (site_ids[parent][s] - 1) 
             * partition->states_padded * partition->rate_cats;
+        if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+        {
+          partition->persite_scales[scaler_index][s] = 
+            partition->scale_buffer[scaler_index] + (site_ids[parent][s] - 1);
+        }
     }
   }
 }
