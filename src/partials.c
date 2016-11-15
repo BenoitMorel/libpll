@@ -130,32 +130,28 @@ static void case_innerinner(pll_partition_t * partition,
 {
   const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
   const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
-  double * parent_clv = partition->clv[op->parent_clv_index];
-  double * left_clv = partition->clv[op->child1_clv_index];
-  double * right_clv = partition->clv[op->child2_clv_index];
+  double ** parent_clv = partition->persite_clv[op->parent_clv_index];
+  double ** left_clv = partition->persite_clv[op->child1_clv_index];
+  double ** right_clv = partition->persite_clv[op->child2_clv_index];
   unsigned int * parent_scaler;
   unsigned int * left_scaler;
   unsigned int * right_scaler;
   unsigned int sites = partition->sites;
-  unsigned int * parent_idlookup = NULL;
-  unsigned int * left_clvlookup = NULL;
-  unsigned int * right_clvlookup = NULL;
-  unsigned int plookup_size = 0;
-  
-  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
-      && partition->repeats)
-  {
-    if (plookup_size = partition->repeats->pernode_max_id[op->parent_clv_index])
-      parent_idlookup = partition->repeats->pernode_id_site[op->parent_clv_index];
-    if (partition->repeats->pernode_max_id[op->child1_clv_index])
-      left_clvlookup = partition->repeats->pernode_site_id[op->child1_clv_index];
-    if (partition->repeats->pernode_max_id[op->child2_clv_index])
-      right_clvlookup = partition->repeats->pernode_site_id[op->child2_clv_index];
+  unsigned int * sites_to_update = NULL; 
+  unsigned int sites_to_update_number = sites; 
+  /* ascertaiment bias correction */
+  if (partition->asc_bias_alloc) {
+    sites += partition->states;
   }
 
-  /* ascertaiment bias correction */
-  if (partition->asc_bias_alloc)
-    sites += partition->states;
+  sites_to_update_number = sites;
+
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
+      && partition->repeats && partition->repeats->pernode_max_id[op->parent_clv_index])
+  {
+    sites_to_update = partition->repeats->pernode_id_site[op->parent_clv_index];
+    sites_to_update_number = partition->repeats->pernode_max_id[op->parent_clv_index];
+  }
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -185,10 +181,8 @@ static void case_innerinner(pll_partition_t * partition,
                              right_matrix,
                              left_scaler,
                              right_scaler,
-                             parent_idlookup,
-                             left_clvlookup,
-                             right_clvlookup,
-                             plookup_size,
+                             sites_to_update,
+                             sites_to_update_number,
                              partition->attributes);
 }
 
@@ -265,6 +259,13 @@ static void update_repeats(pll_partition_t * partition,
                "Unable to allocate enough memory for repeats structure.");
     }
     memset(partition->clv[parent], 0, sizealloc);
+    unsigned int s;
+    for (s = 0; s < partition->sites; ++s) 
+    {
+        partition->persite_clv[parent][s] = (partition->clv[parent]) 
+            + (site_ids[parent][s] - 1) 
+            * partition->states_padded * partition->rate_cats;
+    }
   }
 }
 

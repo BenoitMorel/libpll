@@ -134,7 +134,7 @@
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
 
 /* repeats specific */
-#define REPEATS_LOOKUP_SIZE 1000000
+#define REPEATS_LOOKUP_SIZE 100000000
 
 
 /* structures and data types */
@@ -145,18 +145,18 @@ typedef struct pll_repeats
   /* are caracterized by pernode_max_id[node] == 0 */
   
   /* (node,site) -> class identifier (starts at 1) */
-  unsigned int **pernode_site_id; 
+  unsigned int ** pernode_site_id; 
   // (node,id) -> class site   
-  unsigned int **pernode_id_site; 
+  unsigned int ** pernode_id_site; 
   // (node) -> max class identifier. 
-  unsigned int *pernode_max_id;
+  unsigned int * pernode_max_id;
   // (node) -> number of allocated clvs
-  unsigned int *pernode_allocated_clvs;
- 
+  unsigned int * pernode_allocated_clvs;
+
   /* temporary buffers */ 
-  unsigned int *lookup_buffer;  
-  unsigned int *toclean_buffer; 
-  unsigned int *id_site_buffer; 
+  unsigned int * lookup_buffer;  
+  unsigned int * toclean_buffer; 
+  unsigned int * id_site_buffer; 
 
 } pll_repeats_t;
 
@@ -180,6 +180,7 @@ typedef struct pll_partition
   unsigned int states_padded;
 
   double ** clv;
+  double *** persite_clv;
   double ** pmatrix;
   double * rates;
   double * rate_weights;
@@ -718,18 +719,16 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
 PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
-                                           double * parent_clv,
+                                           double ** parent_persite_clv,
                                            unsigned int * parent_scaler,
-                                           const double * left_clv,
-                                           const double * right_clv,
+                                           double ** left_persite_clv,
+                                           double ** right_persite_clv,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
-                                           const unsigned int * parent_id_to_site,
-                                           const unsigned int * left_site_to_id,
-                                           const unsigned int * right_site_to_id,
-                                           const unsigned int parent_ids,
+                                           const unsigned int * sites_to_update,
+                                           unsigned int sites_to_update_number,
                                            unsigned int attrib);
 
 PLL_EXPORT void pll_core_create_lookup_4x4(unsigned int rate_cats,
@@ -815,9 +814,9 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 PLL_EXPORT double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                  unsigned int sites,
                                                  unsigned int rate_cats,
-                                                 const double * parent_clv,
+                                                 double ** parent_persite_clv,
                                                  const unsigned int * parent_scaler,
-                                                 const double * child_clv,
+                                                 double ** child_persite_clv,
                                                  const unsigned int * child_scaler,
                                                  const double * pmatrix,
                                                  double ** frequencies,
@@ -827,8 +826,6 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                  const int * invar_indices,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl,
-                                                 const unsigned int * parent_clv_lookup,
-                                                 const unsigned int * child_clv_lookup,
                                                  unsigned int attrib);
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ti(unsigned int states,
@@ -866,7 +863,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
 PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               unsigned int sites,
                                               unsigned int rate_cats,
-                                              const double * clv,
+                                              double ** persite_clv,
                                               const unsigned int * scaler,
                                               double ** frequencies,
                                               const double * rate_weights,
@@ -875,7 +872,6 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               const int * invar_indices,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl,
-                                              const unsigned int * clvlookup,
                                               unsigned int attrib);
 
 /* functions in core_partials_sse.c */

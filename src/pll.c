@@ -68,6 +68,12 @@ static void dealloc_partition_data(pll_partition_t * partition)
       pll_aligned_free(partition->clv[i]);
   }
   free(partition->clv);
+  if (partition->persite_clv) 
+  {
+    for (i = 0; i < partition->clv_buffers + partition->tips; ++i)
+      free(partition->persite_clv[i]);
+  }
+  free(partition->persite_clv);
 
   if (partition->pmatrix)
   {
@@ -417,7 +423,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int scale_buffers,
                                                   unsigned int attributes)
 {
-  unsigned int i;
+  unsigned int i, j;
   unsigned int sites_alloc;
 
   /* make sure that multiple ARCH were not specified */
@@ -523,7 +529,14 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory for CLVs.");
     return PLL_FAILURE;
   }
-
+  // TODO benoit check malloc
+  partition->persite_clv = (double ***)calloc(partition->tips + partition->clv_buffers,
+                                              sizeof(double **));
+  // TODO benoit not needed for sites patterns
+  for (i = 0; i <  partition->tips + partition->clv_buffers; ++i) 
+  {
+    partition->persite_clv[i] = calloc(sites_alloc, sizeof(double *));
+  }
   /* if site repeats are enabled, we have to allocate clvs later */
   if (!userepeats) 
   {
@@ -549,6 +562,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       memset(partition->clv[i],
             0,
             (size_t)sites_alloc*states_padded*rate_cats*sizeof(double));
+      for (j = 0; j < sites_alloc; ++j) 
+        partition->persite_clv[i][j] = partition->clv[i] + j * states_padded*rate_cats;
     }
   }
 
@@ -1056,6 +1071,7 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
       site_ids[tip_index][s] = repeats->lookup_buffer[index_lookup];
     }
     repeats->pernode_max_id[tip_index] = curr_id;
+    // TODO should we always reallocate ?
     free(id_site[tip_index]);
     id_site[tip_index] = malloc(sizeof(unsigned int) * curr_id);
     for (s = 0; s < curr_id; ++s) 
@@ -1085,6 +1101,13 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
       memset(partition->clv[tip_index],
             0,
             sizealloc);
+    }
+    unsigned int clvsize = partition->states_padded * partition->rate_cats;
+    if (partition->repeats) {
+      for (s = 0; s < partition->sites; ++s)
+      {
+        partition->persite_clv[tip_index][s] = partition->clv[tip_index] + (site_ids[tip_index][s] - 1) * clvsize;
+      }
     }
   } 
 

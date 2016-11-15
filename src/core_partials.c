@@ -403,18 +403,16 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
 PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
-                                           double * parent_clv,
+                                           double ** parent_persite_clv,
                                            unsigned int * parent_scaler,
-                                           const double * left_clv,
-                                           const double * right_clv,
+                                           double ** left_persite_clv,
+                                           double ** right_persite_clv,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
-                                           const unsigned int * parent_id_to_site,
-                                           const unsigned int * left_site_to_id,
-                                           const unsigned int * right_site_to_id,
-                                           const unsigned int parent_ids,
+                                           const unsigned int * sites_to_update,
+                                           unsigned int sites_to_update_number,
                                            unsigned int attrib)
 {
   unsigned int i,j,k,n;
@@ -423,12 +421,8 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   const double * lmat;
   const double * rmat;
 
-  const double * lclv = left_clv;
-  const double * rclv = right_clv;
-  double * pclv = parent_clv;
-
   unsigned int span = states * rate_cats;
-  unsigned int userepeats = attrib & PLL_ATTRIB_SITES_REPEATS;
+/*
 #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
@@ -463,27 +457,21 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
     return;
   }
 #endif
-
+*/
   /* add up the scale vectors of the two children if available */
   if (parent_scaler)
     fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
-
-  unsigned int max_clv = (parent_id_to_site && parent_ids) ? 
-                          parent_ids : sites;
+  
   /* compute CLV */
-  for (n = 0; n < max_clv; ++n)
+  for (n = 0; n < sites_to_update_number; ++n)
   {
+    unsigned int site = sites_to_update ? sites_to_update[n] : n;
+    double * parent_clv = parent_persite_clv[site];
+    const double * left_clv = left_persite_clv[site];
+    const double * right_clv = right_persite_clv[site];
     lmat = left_matrix;
     rmat = right_matrix;
     scaling = (parent_scaler) ? 1 : 0;
-    if (userepeats) 
-    {
-      unsigned int site = parent_id_to_site ? parent_id_to_site[n] : n;
-      if (left_site_to_id)
-        left_clv   = (lclv + (states * rate_cats * (left_site_to_id[site] - 1)));
-      if (right_site_to_id)
-        right_clv   = (rclv + (states * rate_cats * (right_site_to_id[site] - 1)));
-    }
     for (k = 0; k < rate_cats; ++k)
     {
       for (i = 0; i < states; ++i)

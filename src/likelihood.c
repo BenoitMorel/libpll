@@ -130,19 +130,12 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   else
     scaler = partition->scale_buffer[scaler_index];
 
-  const unsigned int * clv_lookup = NULL;
-
-  if ((partition->attributes & PLL_ATTRIB_SITES_REPEATS) && partition->repeats
-      && partition->repeats->pernode_max_id[clv_index]) 
-  {
-    clv_lookup = partition->repeats->pernode_site_id[clv_index];
-  }
 
   /* compute log-likelihood via the core function */
   logl = pll_core_root_loglikelihood(partition->states,
                                      partition->sites,
                                      partition->rate_cats,
-                                     partition->clv[clv_index],
+                                     partition->persite_clv[clv_index],
                                      scaler,
                                      partition->frequencies,
                                      partition->rate_weights,
@@ -151,7 +144,6 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                      partition->invariant,
                                      freqs_indices,
                                      persite_lnl,
-                                     clv_lookup,
                                      partition->attributes);
 
 
@@ -317,9 +309,9 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
 }
 
 static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
-                                             const double * clvp,
+                                             double ** persite_clvp,
                                              unsigned int * parent_scaler,
-                                             const double * clvc,
+                                             double ** persite_clvc,
                                              unsigned int * child_scaler,
                                              unsigned int matrix_index,
                                              const unsigned int * freqs_indices)
@@ -329,6 +321,8 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
   double terma, terma_r, termb;
   double site_lk;
 
+  double * clvp;
+  double *clvc;
   const double * freqs = NULL;
   const double * pmatrix = partition->pmatrix[matrix_index];
   unsigned int states = partition->states;
@@ -337,14 +331,7 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
   unsigned int * pattern_weights = partition->pattern_weights;
   double * rate_weights = partition->rate_weights;
 
-  /* point clv, clvc, scalers and pattern weights to state sites */
-  unsigned int offset = partition->sites * 
-                        partition->rate_cats *
-                        partition->states_padded;
-
   pattern_weights += partition->sites;
-  clvp += offset;
-  clvc += offset;
   parent_scaler += partition->sites;
   child_scaler += partition->sites;
 
@@ -355,6 +342,9 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
   /* 1. compute per-site logl for each state */
   for (n = 0; n < partition->states; ++n)
   {
+    clvp = persite_clvp[partition->sites + n];
+    clvc = persite_clvc[partition->sites + n];
+    
     pmatrix = partition->pmatrix[matrix_index];
     terma = 0;
     for (i = 0; i < partition->rate_cats; ++i)
@@ -420,22 +410,12 @@ static double edge_loglikelihood(pll_partition_t * partition,
 {
   double logl = 0;
 
-  const double * clvp = partition->clv[parent_clv_index];
-  const double * clvc = partition->clv[child_clv_index];
+  double ** clvp = partition->persite_clv[parent_clv_index];
+  double ** clvc = partition->persite_clv[child_clv_index];
 
   unsigned int * parent_scaler;
   unsigned int * child_scaler;
 
-  /* repeats lookups */
-  unsigned int * parent_clv_lookup = NULL;
-  unsigned int * child_clv_lookup = NULL;
-  if ((partition->attributes & PLL_ATTRIB_SITES_REPEATS) && partition->repeats) 
-  {
-    if (partition->repeats->pernode_max_id[parent_clv_index]) 
-      parent_clv_lookup = partition->repeats->pernode_site_id[parent_clv_index];
-    if (partition->repeats->pernode_max_id[child_clv_index]) 
-      child_clv_lookup = partition->repeats->pernode_site_id[child_clv_index];
-  }
 
   if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
     child_scaler = NULL;
@@ -463,8 +443,6 @@ static double edge_loglikelihood(pll_partition_t * partition,
                                         partition->invariant,
                                         freqs_indices,
                                         persite_lnl,
-                                        parent_clv_lookup,
-                                        child_clv_lookup,
                                         partition->attributes);
 
   /* ascertainment bias correction */

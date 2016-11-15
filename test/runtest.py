@@ -40,9 +40,9 @@ import time
 #####################
 #   Configuration   #
 #####################
-do_memtest       =  1             # Evaluate memory leaks
+do_memtest       =  0             # Evaluate memory leaks
 num_replicates   = 20             # Number of samples for the speed test
-all_args         = [0,1,2,3,4,5]  # 0: No vector / No tip pattern
+all_args         = [0,1,2,3,4,5,8]  # 0: No vector / No tip pattern
                                   # 1: No vector / Tip pattern
                                   # 2: AVX / No tip pattern
                                   # 3: AVX / Tip pattern
@@ -157,6 +157,10 @@ def runSpeedTest(files):
       else:
           attribstr += " CPU"
           typestr   += "C"
+      if (args & 8):
+          attrib += " sr"
+          attribstr += " SR"
+          typestr   += " Sites Repeats"
           
       fancyprint("bluebg", "{:<80}"
         .format(attribstr.rjust(40 + len(attribstr)/2)), True)
@@ -281,6 +285,10 @@ def runValidation(files):
       else:
         attribstr += " CPU"
         typestr   += "C"
+      if (args & 8):
+          attrib += " sr"
+          attribstr += " SR"
+          typestr   += " Sites Repeats"
           
       fancyprint("bluebg", "{:<80}"
         .format(attribstr.rjust(40 + len(attribstr)/2)), True)

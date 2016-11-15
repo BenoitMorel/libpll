@@ -24,7 +24,7 @@
 PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               unsigned int sites,
                                               unsigned int rate_cats,
-                                              const double * clv,
+                                              double ** persite_clv,
                                               const unsigned int * scaler,
                                               double ** frequencies,
                                               const double * rate_weights,
@@ -33,8 +33,6 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               const int * invar_indices,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl,
-                                              const unsigned int * clv_lookup,
-
                                               unsigned int attrib)
 {
   unsigned int i,j,k,m = 0;
@@ -48,15 +46,14 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
 
   unsigned int states_padded = states;
   
-  unsigned int userepeats = (attrib & PLL_ATTRIB_SITES_REPEATS) && clv_lookup;
-  const double * startclv = clv;
+  const double * clv;
 
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)
     {
-      return pll_core_root_loglikelihood_4x4_sse(sites,
+/*      return pll_core_root_loglikelihood_4x4_sse(sites,
                                                  rate_cats,
                                                  clv,
                                                  scaler,
@@ -67,10 +64,10 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                                  invar_indices,
                                                  freqs_indices,
                                                  persite_lnl);
-    }
+  */  }
     else
     {
-      return pll_core_root_loglikelihood_sse(states,
+      /*return pll_core_root_loglikelihood_sse(states,
                                              sites,
                                              rate_cats,
                                              clv,
@@ -82,7 +79,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                              invar_indices,
                                              freqs_indices,
                                              persite_lnl);
-    }
+    */}
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;
@@ -91,7 +88,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    if (states == 4)
+    /*if (states == 4)
     {
       return pll_core_root_loglikelihood_4x4_avx(sites,
                                                  rate_cats,
@@ -119,7 +116,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                              invar_indices,
                                              freqs_indices,
                                              persite_lnl);
-    }
+    }*/
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
     states_padded = (states+3) & 0xFFFFFFFC;
@@ -129,8 +126,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   /* iterate through sites */
   for (i = 0; i < sites; ++i)
   {
-    if (userepeats) 
-      clv = startclv + (rate_cats * states * (clv_lookup[i] - 1));
+    clv = persite_clv[i];
     term = 0;
     for (j = 0; j < rate_cats; ++j)
     {
@@ -484,9 +480,9 @@ PLL_EXPORT
 double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       unsigned int sites,
                                       unsigned int rate_cats,
-                                      const double * parent_clv,
+                                      double ** parent_persite_clv,
                                       const unsigned int * parent_scaler,
-                                      const double * child_clv,
+                                      double ** child_persite_clv,
                                       const unsigned int * child_scaler,
                                       const double * pmatrix,
                                       double ** frequencies,
@@ -496,15 +492,13 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       const int * invar_indices,
                                       const unsigned int * freqs_indices,
                                       double * persite_lnl,
-                                      const unsigned int * parent_clv_lookup,
-                                      const unsigned int * child_clv_lookup,
                                       unsigned int attrib)
 {
   unsigned int n,i,j,k,m = 0;
   double logl = 0;
 
-  const double * clvp = parent_clv;
-  const double * clvc = child_clv;
+  const double * clvp;
+  const double * clvc;
   double prop_invar = 0;
   const double * pmat;
   const double * freqs = NULL;
@@ -518,12 +512,10 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   */
   unsigned int states_padded = states;
 
-  unsigned int userepeats = (attrib & PLL_ATTRIB_SITES_REPEATS);
-
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
-    if (states == 4)
+    /*if (states == 4)
     {
       return pll_core_edge_loglikelihood_ii_4x4_sse(sites,
                                                     rate_cats,
@@ -557,7 +549,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 invar_indices,
                                                 freqs_indices,
                                                 persite_lnl);
-    }
+    }*/
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;
@@ -566,7 +558,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    if (states == 4)
+    /*if (states == 4)
     {
       return pll_core_edge_loglikelihood_ii_4x4_avx(sites,
                                                     rate_cats,
@@ -600,7 +592,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 invar_indices,
                                                 freqs_indices,
                                                 persite_lnl);
-    }
+    }*/
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
     states_padded = (states+3) & 0xFFFFFFFC;
@@ -611,10 +603,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   {
     pmat = pmatrix;
     terma = 0;
-    if (userepeats && parent_clv_lookup)
-        clvp = parent_clv + (rate_cats * states * (parent_clv_lookup[n] - 1));
-    if (userepeats && child_clv_lookup)
-        clvc = child_clv + (rate_cats * states * (child_clv_lookup[n] - 1));
+    clvp = parent_persite_clv[n];
+    clvc = child_persite_clv[n];
     for (i = 0; i < rate_cats; ++i)
     {
       freqs = frequencies[freqs_indices[i]];
