@@ -49,7 +49,7 @@ static double compute_asc_bias_correction(double logl_base,
 
 static double root_loglikelihood_asc_bias(pll_partition_t * partition,
                                           const double * clv,
-                                          unsigned int * scaler,
+                                          unsigned int ** scaler,
                                           const unsigned int * freqs_indices)
 {
    unsigned int i,j,k;
@@ -85,7 +85,7 @@ static double root_loglikelihood_asc_bias(pll_partition_t * partition,
      }
 
      /* count number of scaling factors to acount for */
-     scale_factors = scaler ? scaler[partition->sites + i] : 0;
+     scale_factors = scaler ? *scaler[partition->sites + i] : 0;
 
      sum_w_inv += pattern_weights[partition->sites + i];
      if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
@@ -122,13 +122,13 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  double * persite_lnl)
 {
   double logl = 0;
-  unsigned int * scaler;
+  unsigned int ** scaler;
 
   /* get scaler array if specified */
   if (scaler_index == PLL_SCALE_BUFFER_NONE)
     scaler = NULL;
   else
-    scaler = partition->scale_buffer[scaler_index];
+    scaler = partition->persite_scales[scaler_index];
 
 
   /* compute log-likelihood via the core function */

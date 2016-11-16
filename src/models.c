@@ -650,12 +650,12 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   else
   {
     unsigned int span_padded = rate_cats * states_padded;
-
     for (i = 0; i < tips; ++i)
     {
       tipclv = partition->clv[i];
       for (j = 0; j < sites; ++j)
       {
+        tipclv = partition->persite_clv[i][j];
         state = 0;
         for (k = 0; k < states; ++k)
         {

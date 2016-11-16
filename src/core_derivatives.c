@@ -1,4 +1,6 @@
 /*
+                    repeats->pernode_id_site[tip_index][i] : i;
+                    repeats->pernode_id_site[tip_index][i] : i;
     Copyright (C) 2015 Tomas Flouri, Diego Darriba
 
     This program is free software: you can redistribute it and/or modify
@@ -80,12 +82,14 @@ PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
 PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
-                                           const double * parent_clv,
-                                           const double * child_clv,
+                                           double ** parent_persite_clv,
+                                           double ** child_persite_clv,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
+                                           const unsigned int * sites_to_update,
+                                           unsigned int sites_to_update_number,
                                            unsigned int attrib)
 {
   unsigned int i, j, k, n;
@@ -93,12 +97,12 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   double righterm = 0;
 
   double * sum                   = sumtable;
-  const double * t_clvp          = parent_clv;
-  const double * t_clvc          = child_clv;
+  double * t_clvp;
+  double * t_clvc;
   const double * t_eigenvecs;
   const double * t_inv_eigenvecs;
   const double * t_freqs;
-
+/*
 #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
@@ -127,10 +131,14 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            sumtable);
   }
 #endif
-
+*/
   /* build sumtable */
-  for (n = 0; n < sites; n++)
+  unsigned int site;
+  for (n = 0; n < sites_to_update_number; n++)
   {
+    site = sites_to_update ? sites_to_update[n] : n;
+    t_clvp = parent_persite_clv[site];
+    t_clvc = child_persite_clv[site];
     for (i = 0; i < rate_cats; ++i)
     {
       t_eigenvecs     = eigenvecs[i];

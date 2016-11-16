@@ -138,12 +138,11 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int ** right_scaler;
   unsigned int sites = partition->sites;
   unsigned int * sites_to_update = NULL; 
-  unsigned int sites_to_update_number = sites; 
+  unsigned int sites_to_update_number; 
   /* ascertaiment bias correction */
   if (partition->asc_bias_alloc) {
     sites += partition->states;
   }
-
   sites_to_update_number = sites;
 
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS

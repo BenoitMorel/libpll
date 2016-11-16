@@ -25,7 +25,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               unsigned int sites,
                                               unsigned int rate_cats,
                                               double ** persite_clv,
-                                              const unsigned int * scaler,
+                                              unsigned int ** scaler,
                                               double ** frequencies,
                                               const double * rate_weights,
                                               const unsigned int * pattern_weights,
@@ -46,7 +46,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
 
   unsigned int states_padded = states;
   
-  const double * clv;
+  double * clv;
 
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
@@ -159,7 +159,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(site_lk) * pattern_weights[i];
     if (scaler && scaler[i])
-      site_lk += scaler[i] * log(PLL_SCALE_THRESHOLD);
+      site_lk += *scaler[i] * log(PLL_SCALE_THRESHOLD);
 
     /* store per-site log-likelihood */
     if (persite_lnl)
