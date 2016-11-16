@@ -60,7 +60,7 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
 {
   unsigned int i,j,k;
 
-  double * clv = partition->clv[clv_index];
+  double ** persite_clv = partition->persite_clv[clv_index];
   unsigned int * scaler = (scaler_index == PLL_SCALE_BUFFER_NONE) ?
                           NULL : partition->scale_buffer[scaler_index];
   unsigned int states = partition->states;
@@ -81,11 +81,11 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
       printf("(");
       for (k = 0; k < states-1; ++k)
       {
-        prob = clv[i*rates*states_padded + j*states_padded + k];
+        prob = persite_clv[i][j*states_padded + k];
         if (scaler) unscale(&prob, scaler[i]);
         printf("%.*f,", float_precision, prob);
       }
-      prob = clv[i*rates*states_padded + j*states_padded + k];
+      prob = persite_clv[i][j*states_padded + k];
       if (scaler) unscale(&prob, scaler[i]);
       printf("%.*f)", float_precision, prob);
       if (j < rates - 1) printf(",");
