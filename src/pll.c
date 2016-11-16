@@ -1079,6 +1079,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     unsigned int * lookup_buffer = repeats->lookup_buffer;
     unsigned int ** site_ids = repeats->pernode_site_id;
     unsigned int ** id_site = repeats->pernode_id_site;
+    unsigned int additional_sites = partition->asc_bias_alloc ? partition->states : 0;
+
     repeats->pernode_max_id[tip_index] = 0;
     unsigned int curr_id = 0;
     for (s = 0; s < partition->sites; ++s) 
@@ -1095,16 +1097,20 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     repeats->pernode_max_id[tip_index] = curr_id;
     // TODO should we always reallocate ?
     free(id_site[tip_index]);
-    id_site[tip_index] = malloc(sizeof(unsigned int) * curr_id);
+    id_site[tip_index] = malloc(sizeof(unsigned int) * (curr_id + additional_sites));
     for (s = 0; s < curr_id; ++s) 
     {
       id_site[tip_index][s] = id_site_buffer[s];
       lookup_buffer[toclean_buffer[s]] = 0;
     }
+    for (s = 0; s < additional_sites; ++s) 
+    {
+      id_site[tip_index][curr_id + s] = partition->sites + s;
+    }
     /* If pattern tip is not enabled, we need to allocate the clvs for the tip */
     if (!(partition->attributes & PLL_ATTRIB_PATTERN_TIP)) 
     {
-     unsigned int sizealloc = curr_id * partition->states_padded * 
+      unsigned int sizealloc = (curr_id + additional_sites) * partition->states_padded * 
                               partition->rate_cats * sizeof(double);
       free(partition->clv[tip_index]); 
       
@@ -1127,9 +1133,10 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     unsigned int clvsize = partition->states_padded * partition->rate_cats;
     if (partition->repeats) {
       for (s = 0; s < partition->sites; ++s)
-      {
         partition->persite_clv[tip_index][s] = partition->clv[tip_index] + (site_ids[tip_index][s] - 1) * clvsize;
-      }
+      for (s = 0; s < additional_sites; ++s) 
+        partition->persite_clv[tip_index][s + partition->sites] = 
+          partition->clv[tip_index] + (curr_id + s) * clvsize;
     }
   } 
 

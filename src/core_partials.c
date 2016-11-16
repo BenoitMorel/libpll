@@ -34,7 +34,9 @@ static void fill_parent_scaler_2(const unsigned int *sites,
     if (!left_scaler && !right_scaler) 
     {
       for (i = 0; i < sites_number; ++i) 
+      {
         *parent_scaler[sites[i]] = 0;
+      }
     } 
     else if (left_scaler && right_scaler) 
     {
