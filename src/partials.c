@@ -247,8 +247,8 @@ static void update_repeats(pll_partition_t * partition,
     sites_to_alloc = (sites_to_alloc * 3) / 2;
     // but not more than the max needed
     if (sites_to_alloc > partition->sites + additional_sites) 
-      sites_to_alloc = partition->sites;
-    
+      sites_to_alloc = partition->sites + additional_sites;
+      
     // reallocate clvs
     free(partition->clv[parent]);  
     partition->clv[parent] = pll_aligned_alloc(sites_to_alloc * clv_size,
