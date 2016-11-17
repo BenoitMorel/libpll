@@ -130,13 +130,13 @@ static int sumtable_innerinner(pll_partition_t * partition,
   }
   
   sites_to_update_number = sites;
-  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
+  /*if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
       && partition->repeats && partition->repeats->pernode_max_id[parent_clv_index])
   {
     sites_to_update = partition->repeats->pernode_id_site[parent_clv_index];
     sites_to_update_number = partition->repeats->pernode_max_id[parent_clv_index];
   }
-  
+  */
   retval =
   pll_core_update_sumtable_ii(partition->states,
                               sites,
@@ -226,8 +226,8 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   double * d_f,
                                                   double * dd_f)
 {
-  unsigned int * parent_scaler;
-  unsigned int * child_scaler;
+  unsigned int ** parent_persite_scaler;
+  unsigned int ** child_persite_scaler;
   unsigned int i;
   unsigned int rate_cats = partition->rate_cats;
 
@@ -254,21 +254,21 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
 
   /* get parent scaler */
   if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
+    parent_persite_scaler = NULL;
   else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
+    parent_persite_scaler = partition->persite_scales[parent_scaler_index];
 
   if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
-    child_scaler = NULL;
+    child_persite_scaler = NULL;
   else
-    child_scaler = partition->scale_buffer[child_scaler_index];
+    child_persite_scaler = partition->persite_scales[child_scaler_index];
 
   int retval = pll_core_likelihood_derivatives(partition->states,
                                                partition->sites,
                                                partition->rate_cats,
                                                partition->rate_weights,
-                                               parent_scaler,
-                                               child_scaler,
+                                               parent_persite_scaler,
+                                               child_persite_scaler,
                                                partition->invariant,
                                                partition->pattern_weights,
                                                branch_length,
