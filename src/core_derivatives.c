@@ -88,8 +88,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
-                                           const unsigned int * sites_to_update,
-                                           unsigned int sites_to_update_number,
                                            unsigned int attrib)
 {
   unsigned int i, j, k, n;
@@ -109,36 +107,36 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
     return pll_core_update_sumtable_ii_sse(states,
                                            sites,
                                            rate_cats,
-                                           parent_clv,
-                                           child_clv,
+                                           parent_persite_clv,
+                                           child_persite_clv,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
                                            sumtable);
   }
 #endif
+
+*/
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     return pll_core_update_sumtable_ii_avx(states,
                                            sites,
                                            rate_cats,
-                                           parent_clv,
-                                           child_clv,
+                                           parent_persite_clv,
+                                           child_persite_clv,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
                                            sumtable);
   }
 #endif
-*/
+  
   /* build sumtable */
-  unsigned int site;
-  for (n = 0; n < sites_to_update_number; n++)
+  for (n = 0; n < sites; n++)
   {
-    site = sites_to_update ? sites_to_update[n] : n;
-    t_clvp = parent_persite_clv[site];
-    t_clvc = child_persite_clv[site];
+    t_clvp = parent_persite_clv[n];
+    t_clvc = child_persite_clv[n];
     for (i = 0; i < rate_cats; ++i)
     {
       t_eigenvecs     = eigenvecs[i];

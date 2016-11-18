@@ -105,8 +105,6 @@ static int sumtable_innerinner(pll_partition_t * partition,
                                               sizeof(double *));
   double ** freqs = (double **)malloc(partition->rate_cats *
                                       sizeof(double *));
-  unsigned int * sites_to_update = NULL; 
-  unsigned int sites_to_update_number; 
   if (!eigenvecs || !inv_eigenvecs || !freqs)
   {
     if (eigenvecs) free(eigenvecs);
@@ -129,14 +127,6 @@ static int sumtable_innerinner(pll_partition_t * partition,
     freqs[i] = partition->frequencies[params_indices[i]];
   }
   
-  sites_to_update_number = sites;
-  /*if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
-      && partition->repeats && partition->repeats->pernode_max_id[parent_clv_index])
-  {
-    sites_to_update = partition->repeats->pernode_id_site[parent_clv_index];
-    sites_to_update_number = partition->repeats->pernode_max_id[parent_clv_index];
-  }
-  */
   retval =
   pll_core_update_sumtable_ii(partition->states,
                               sites,
@@ -147,8 +137,6 @@ static int sumtable_innerinner(pll_partition_t * partition,
                               inv_eigenvecs,
                               freqs,
                               sumtable,
-                              sites_to_update,
-                              sites_to_update_number,
                               partition->attributes);
 
   free(freqs);

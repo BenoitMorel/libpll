@@ -21,7 +21,7 @@
 
 #include "pll.h"
 
-
+// TODO benoit remove fill_parent
 static void fill_parent_scaler_2(const unsigned int *sites,
                                unsigned int sites_number,
                                unsigned int ** parent_scaler,
@@ -482,7 +482,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
 
   unsigned int span = states * rate_cats;
 /*
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE TODO benoit
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     pll_core_update_partial_ii_sse(states,
@@ -499,24 +499,27 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
     return;
   }
 #endif
+*/
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
+    // TODO benoit
     pll_core_update_partial_ii_avx(states,
                                    sites,
                                    rate_cats,
-                                   parent_clv,
+                                   parent_persite_clv,
                                    parent_scaler,
-                                   left_clv,
-                                   right_clv,
+                                   left_persite_clv,
+                                   right_persite_clv,
                                    left_matrix,
                                    right_matrix,
                                    left_scaler,
-                                   right_scaler);
+                                   right_scaler,
+                                   sites_to_update,
+                                   sites_to_update_number);
     return;
   }
 #endif
-*/
   /* add up the scale vectors of the two children if available */
   if (parent_scaler)
     fill_parent_scaler_2(sites_to_update, sites_to_update_number,

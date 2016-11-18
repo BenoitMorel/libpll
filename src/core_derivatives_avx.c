@@ -23,8 +23,8 @@
 
 PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
-                                                   const double * clvp,
-                                                   const double * clvc,
+                                                   double ** parent_persite_clv,
+                                                   double ** child_persite_clv,
                                                    double ** eigenvecs,
                                                    double ** inv_eigenvecs,
                                                    double ** freqs,
@@ -35,8 +35,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
   /* build sumtable */
   double * sum = sumtable;
 
-  const double * t_clvp = clvp;
-  const double * t_clvc = clvc;
+  const double * t_clvp;
+  const double * t_clvc;
   double * t_eigenvecs;
   double * t_freqs;
 
@@ -67,6 +67,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
   /* vectorized loop from update_sumtable() */
   for (n = 0; n < sites; n++)
   {
+    t_clvp = parent_persite_clv[n];
+    t_clvc = child_persite_clv[n];
     for (i = 0; i < rate_cats; ++i)
     {
       t_eigenvecs = eigenvecs[i];
@@ -167,8 +169,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
 PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
-                                               const double * clvp,
-                                               const double * clvc,
+                                               double ** parent_persite_clv,
+                                               double ** child_persite_clv,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
@@ -179,8 +181,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
   /* build sumtable */
   double * sum = sumtable;
 
-  const double * t_clvp = clvp;
-  const double * t_clvc = clvc;
+  const double * t_clvp;
+  const double * t_clvc;
   double * t_freqs;
 
   /* dedicated functions for 4x4 matrices */
@@ -188,8 +190,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
   {
     return pll_core_update_sumtable_ii_4x4_avx(sites,
                                        rate_cats,
-                                       clvp,
-                                       clvc,
+                                       parent_persite_clv,
+                                       child_persite_clv,
                                        eigenvecs,
                                        inv_eigenvecs,
                                        freqs,
@@ -240,6 +242,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
   /* vectorized loop from update_sumtable() */
   for (n = 0; n < sites; n++)
   {
+    t_clvp = parent_persite_clv[n];
+    t_clvc = child_persite_clv[n];
     const double * c_eigenvecs      = tt_eigenvecs;
     const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
     for (i = 0; i < rate_cats; ++i)
