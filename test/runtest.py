@@ -40,18 +40,17 @@ import time
 #####################
 #   Configuration   #
 #####################
-do_memtest       =  1             # Evaluate memory leaks
-num_replicates   = 20             # Number of samples for the speed test
-all_args         = [0, 1, 2, 3, 4, 5,
-                    8,    10,   12]  # 0: No vector / No tip pattern
-                                  # 1: No vector / Tip pattern
-                                  # 2: AVX / No tip pattern
-                                  # 3: AVX / Tip pattern
-                                  # 4: SSE / No tip pattern
-                                  # 5: SSE / Tip pattern
-                                  # 8: No vector / No tip pattern / Sites repeats
-                                  # 10: AVX / No tip pattern / Sites repeats
-                                  # 12: SSE / No tip pattern / Sites repeats
+do_memtest       =  0                 # Evaluate memory leaks
+num_replicates   = 20                 # Number of samples for the speed test
+all_args         = [0,1,2,3,4,5,8,9,
+                    16, 18, 20, 24             ]  # 0: No vector / No tip pattern
+                                      # 1: No vector / Tip pattern
+                                      # 2: AVX / No tip pattern
+                                      # 3: AVX / Tip pattern
+                                      # 4: SSE / No tip pattern
+                                      # 5: SSE / Tip pattern
+                                      # 8: AVX2 / No tip pattern
+                                      # 9: AVX2 / Tip pattern
 #####################
 
 colors={"default":"",
@@ -158,10 +157,18 @@ def runSpeedTest(files):
           attrib += " avx"
           attribstr += " AVX"
           typestr   += "A"
+      elif (args & 4):
+          attrib += " sse"
+          attribstr += " SSE"
+          typestr   += "S"
+      elif (args & 8):
+          attrib += " avx2"
+          attribstr += " AVX2"
+          typestr   += "F"
       else:
           attribstr += " CPU"
           typestr   += "C"
-      if (args & 8):
+      if (args & 16):
           attrib += " sr"
           attribstr += " SR"
           typestr   += " Sites Repeats"
@@ -282,14 +289,18 @@ def runValidation(files):
           attrib    += " avx"
           attribstr += " AVX"
           typestr   += "A"
-      if (args & 4):
+      elif (args & 4):
           attrib    += " sse"
           attribstr += " SSE"
           typestr   += "S"
+      elif (args & 8):
+          attrib    += " avx2"
+          attribstr += " AVX2"
+          typestr   += "F"
       else:
         attribstr += " CPU"
         typestr   += "C"
-      if (args & 8):
+      if (args & 16):
           attrib += " sr"
           attribstr += " SR"
           typestr   += " Sites Repeats"
