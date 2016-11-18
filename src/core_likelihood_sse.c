@@ -24,8 +24,8 @@
 PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
                                                   unsigned int sites,
                                                   unsigned int rate_cats,
-                                                  const double * clv,
-                                                  const unsigned int * scaler,
+                                                  double ** persite_clv,
+                                                  unsigned int ** persite_scaler,
                                                   double ** frequencies,
                                                   const double * rate_weights,
                                                   const unsigned int * pattern_weights,
@@ -43,12 +43,15 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
   double term, term_r;
   double inv_site_lk;
 
+  double *clv;
+
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
 
   __m128d xmm0, xmm1, xmm2, xmm3;
 
   for (i = 0; i < sites; ++i)
   {
+    clv = persite_clv[i];
     term = 0;
     for (j = 0; j < rate_cats; ++j)
     {
@@ -92,8 +95,8 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
 
     /* compute site log-likelihood and scale if necessary */
     term = log(term) * pattern_weights[i];
-    if (scaler && scaler[i])
-      term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+    if (persite_scaler && *persite_scaler[i])
+      term += *persite_scaler[i] * log(PLL_SCALE_THRESHOLD);
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -105,8 +108,8 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
 }
 PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
                                                       unsigned int rate_cats,
-                                                      const double * clv,
-                                                      const unsigned int * scaler,
+                                                      double ** persite_clv,
+                                                      unsigned int ** persite_scaler,
                                                       double ** frequencies,
                                                       const double * rate_weights,
                                                       const unsigned int * pattern_weights,
@@ -121,6 +124,8 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
 
   const double * freqs = NULL;
 
+  const double * clv;
+
   double term, term_r;
   double inv_site_lk;
 
@@ -128,6 +133,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
 
   for (i = 0; i < sites; ++i)
   {
+    clv = persite_clv[i];
     term = 0;
     for (j = 0; j < rate_cats; ++j)
     {
@@ -169,8 +175,8 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
 
     /* compute site log-likelihood and scale if necessary */
     term = log(term) * pattern_weights[i];
-    if (scaler && scaler[i])
-      term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+    if (persite_scaler && *persite_scaler[i])
+      term += *persite_scaler[i] * log(PLL_SCALE_THRESHOLD);
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -326,10 +332,10 @@ PLL_EXPORT
 double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
                                           unsigned int sites,
                                           unsigned int rate_cats,
-                                          const double * parent_clv,
-                                          const unsigned int * parent_scaler,
-                                          const double * child_clv,
-                                          const unsigned int * child_scaler,
+                                          double ** parent_persite_clv,
+                                          unsigned int ** parent_persite_scaler,
+                                          double ** child_persite_clv,
+                                          unsigned int ** child_persite_scaler,
                                           const double * pmatrix,
                                           double ** frequencies,
                                           const double * rate_weights,
@@ -343,8 +349,8 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
   double logl = 0;
   double prop_invar = 0;
 
-  const double * clvp = parent_clv;
-  const double * clvc = child_clv;
+  const double * clvp;
+  const double * clvc;
   const double * pmat;
   const double * freqs = NULL;
 
@@ -360,6 +366,8 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
 
   for (n = 0; n < sites; ++n)
   {
+    clvp = parent_persite_clv[n];
+    clvc = child_persite_clv[n];
     pmat = pmatrix;
     terma = 0;
     for (i = 0; i < rate_cats; ++i)
@@ -435,8 +443,8 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
       pmat -= displacement;
     }
     /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+    scale_factors = (parent_persite_scaler) ? *parent_persite_scaler[n] : 0;
+    scale_factors += (child_persite_scaler) ? *child_persite_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma) * pattern_weights[n];
@@ -455,10 +463,10 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
                                               unsigned int rate_cats,
-                                              const double * parent_clv,
-                                              const unsigned int * parent_scaler,
-                                              const double * child_clv,
-                                              const unsigned int * child_scaler,
+                                              double ** parent_persite_clv,
+                                              unsigned int ** parent_persite_scaler,
+                                              double ** child_persite_clv,
+                                              unsigned int ** child_persite_scaler,
                                               const double * pmatrix,
                                               double ** frequencies,
                                               const double * rate_weights,
@@ -472,8 +480,8 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
   double logl = 0;
   double prop_invar = 0;
 
-  const double * clvp = parent_clv;
-  const double * clvc = child_clv;
+  const double * clvp;
+  const double * clvc;
   const double * pmat;
   const double * freqs = NULL;
 
@@ -488,6 +496,8 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
   
   for (n = 0; n < sites; ++n)
   {
+    clvp = parent_persite_clv[n];
+    clvc = child_persite_clv[n];
     pmat = pmatrix;
     terma = 0;
     for (i = 0; i < rate_cats; ++i)
@@ -595,8 +605,8 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
     }
 
     /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+    scale_factors = (parent_persite_scaler) ? *parent_persite_scaler[n] : 0;
+    scale_factors += (child_persite_scaler) ? *child_persite_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma) * pattern_weights[n];

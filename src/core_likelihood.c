@@ -53,9 +53,9 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   {
     if (states == 4)
     {
-/*      return pll_core_root_loglikelihood_4x4_sse(sites,
+      return pll_core_root_loglikelihood_4x4_sse(sites,
                                                  rate_cats,
-                                                 clv,
+                                                 persite_clv,
                                                  scaler,
                                                  frequencies,
                                                  rate_weights,
@@ -64,13 +64,13 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                                  invar_indices,
                                                  freqs_indices,
                                                  persite_lnl);
-  */  }
+    }
     else
     {
-      /*return pll_core_root_loglikelihood_sse(states,
+      return pll_core_root_loglikelihood_sse(states,
                                              sites,
                                              rate_cats,
-                                             clv,
+                                             persite_clv,
                                              scaler,
                                              frequencies,
                                              rate_weights,
@@ -79,7 +79,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                              invar_indices,
                                              freqs_indices,
                                              persite_lnl);
-    */}
+    }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;
@@ -515,7 +515,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
-    /*if (states == 4)
+    if (states == 4)
     {
       return pll_core_edge_loglikelihood_ii_4x4_sse(sites,
                                                     rate_cats,
@@ -537,11 +537,11 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
       return pll_core_edge_loglikelihood_ii_sse(states,
                                                 sites,
                                                 rate_cats,
-                                                clvp,
                                                 parent_persite_clv,
                                                 parent_persite_scaler,
                                                 child_persite_clv,
                                                 child_persite_scaler,
+                                                pmatrix,
                                                 frequencies,
                                                 rate_weights,
                                                 pattern_weights,
@@ -549,7 +549,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 invar_indices,
                                                 freqs_indices,
                                                 persite_lnl);
-    }*/
+    }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;

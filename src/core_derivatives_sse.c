@@ -29,8 +29,8 @@
 PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
-                                               const double * parent_clv,
-                                               const double * child_clv,
+                                               double ** parent_persite_clv,
+                                               double ** child_persite_clv,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs_indices,
@@ -40,8 +40,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
   double lterm = 0;
   double rterm = 0;
 
-  const double * clvp = parent_clv;
-  const double * clvc = child_clv;
+  const double * clvp;
+  const double * clvc;
   const double * ev;
   const double * invev;
   const double * freqs;
@@ -53,6 +53,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
   /* build sumtable */
   for (n = 0; n < sites; n++)
   {
+    clvp = parent_persite_clv[n];
+    clvc = child_persite_clv[n];
     for (i = 0; i < rate_cats; ++i)
     {
       ev = eigenvecs[i];

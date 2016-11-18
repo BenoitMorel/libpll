@@ -100,7 +100,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   const double * t_eigenvecs;
   const double * t_inv_eigenvecs;
   const double * t_freqs;
-/*
+
 #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
@@ -116,7 +116,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   }
 #endif
 
-*/
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {

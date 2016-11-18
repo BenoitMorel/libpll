@@ -463,13 +463,13 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
                                            double ** parent_persite_clv,
-                                           unsigned int ** parent_scaler,
+                                           unsigned int ** parent_persite_scaler,
                                            double ** left_persite_clv,
                                            double ** right_persite_clv,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int ** left_scaler,
-                                           unsigned int ** right_scaler,
+                                           unsigned int ** left_persite_scaler,
+                                           unsigned int ** right_persite_scaler,
                                            const unsigned int * sites_to_update,
                                            unsigned int sites_to_update_number,
                                            unsigned int attrib)
@@ -481,25 +481,25 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   const double * rmat;
 
   unsigned int span = states * rate_cats;
-/*
-#ifdef HAVE_SSE TODO benoit
+#ifdef HAVE_SSE 
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     pll_core_update_partial_ii_sse(states,
                                    sites,
                                    rate_cats,
-                                   parent_clv,
-                                   parent_scaler,
-                                   left_clv,
-                                   right_clv,
+                                   parent_persite_clv,
+                                   parent_persite_scaler,
+                                   left_persite_clv,
+                                   right_persite_clv,
                                    left_matrix,
                                    right_matrix,
-                                   left_scaler,
-                                   right_scaler);
+                                   left_persite_scaler,
+                                   right_persite_scaler,
+                                   sites_to_update,
+                                   sites_to_update_number);
     return;
   }
 #endif
-*/
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -508,22 +508,22 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                    sites,
                                    rate_cats,
                                    parent_persite_clv,
-                                   parent_scaler,
+                                   parent_persite_scaler,
                                    left_persite_clv,
                                    right_persite_clv,
                                    left_matrix,
                                    right_matrix,
-                                   left_scaler,
-                                   right_scaler,
+                                   left_persite_scaler,
+                                   right_persite_scaler,
                                    sites_to_update,
                                    sites_to_update_number);
     return;
   }
 #endif
   /* add up the scale vectors of the two children if available */
-  if (parent_scaler)
+  if (parent_persite_scaler)
     fill_parent_scaler_2(sites_to_update, sites_to_update_number,
-        parent_scaler, left_scaler, right_scaler);
+        parent_persite_scaler, left_persite_scaler, right_persite_scaler);
   
   /* compute CLV */
   for (n = 0; n < sites_to_update_number; ++n)
@@ -534,7 +534,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
     const double * right_clv = right_persite_clv[site];
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = (parent_scaler) ? 1 : 0;
+    scaling = (parent_persite_scaler) ? 1 : 0;
     for (k = 0; k < rate_cats; ++k)
     {
       for (i = 0; i < states; ++i)
@@ -564,7 +564,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
       for (i = 0; i < span; ++i)
         parent_clv[i] *= PLL_SCALE_FACTOR;
       parent_clv += span;
-      *parent_scaler[site] += 1;
+      *parent_persite_scaler[site] += 1;
     }
   }
 }
