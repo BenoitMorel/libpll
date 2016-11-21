@@ -132,8 +132,6 @@
 #define PLL_UTREE_SHOW_SCALER_INDEX      (1 << 3)
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
 
-/* repeats specific */
-#define REPEATS_LOOKUP_SIZE 100000000
 
 
 /* structures and data types */
@@ -157,6 +155,7 @@ typedef struct pll_repeats
   unsigned int * toclean_buffer; 
   unsigned int * id_site_buffer; 
 
+  unsigned int lookup_buffer_size;
 } pll_repeats_t;
 
 typedef struct pll_partition

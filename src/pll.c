@@ -21,6 +21,9 @@
 
 #include "pll.h"
 
+/* at least the min value in the pll_map used */
+#define REPEATS_LOOKUP_SIZE 1048577 
+
 __thread int pll_errno;
 __thread char pll_errmsg[200] = {0};
 
@@ -859,9 +862,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
         return PLL_FAILURE;
       }
       for (j = 0; j < sites_alloc; ++j) 
-      {
         partition->persite_scales[i][j] = partition->scale_buffer[i] + j;
-      }
     }
   }
 
@@ -906,9 +907,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
         return PLL_FAILURE;
       }
     }
+    repeats->lookup_buffer_size = REPEATS_LOOKUP_SIZE;
     repeats->pernode_max_id = calloc(nodes_number, sizeof(unsigned int));
     repeats->pernode_allocated_clvs = calloc(nodes_number, sizeof(unsigned int));
-    repeats->lookup_buffer = calloc(REPEATS_LOOKUP_SIZE, sizeof(unsigned int));
+    repeats->lookup_buffer = calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
     repeats->toclean_buffer = malloc(partition->sites * sizeof(unsigned int));
     repeats->id_site_buffer = malloc(partition->sites * sizeof(unsigned int));
     if (!(repeats->pernode_max_id && repeats->lookup_buffer

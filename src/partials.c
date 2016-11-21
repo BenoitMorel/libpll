@@ -203,8 +203,9 @@ static void update_repeats(pll_partition_t * partition,
   unsigned int additional_sites = partition->asc_bias_alloc ? partition->states : 0;
   unsigned int sites_to_alloc;
   int scaler_index = op->parent_scaler_index;
+  unsigned int s;
   // in case site repeats is activated but not used for this node
-  unsigned int userepeats = !(!min_size || REPEATS_LOOKUP_SIZE <= min_size);
+  unsigned int userepeats = !(!min_size || repeats->lookup_buffer_size <= min_size);
   if (!userepeats)
   {
     sites_to_alloc = partition->sites + additional_sites;
@@ -213,7 +214,6 @@ static void update_repeats(pll_partition_t * partition,
   else
   {
     // fill the parent repeats identifiers
-    unsigned int s;
     for (s = 0; s < partition->sites; ++s) 
     {
       unsigned int index_lookup = (site_ids[left][s] - 1) 
@@ -273,27 +273,40 @@ static void update_repeats(pll_partition_t * partition,
     unsigned int s;
 
     // set the lookups
-    for (s = 0; s < partition->sites; ++s) 
+    if (userepeats) 
     {
-        partition->persite_clv[parent][s] = (partition->clv[parent]) 
-            + (site_ids[parent][s] - 1) 
-            * partition->states_padded * partition->rate_cats;
-        if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-        {
-          partition->persite_scales[scaler_index][s] = 
-            partition->scale_buffer[scaler_index] + (site_ids[parent][s] - 1);
-        }
+      for (s = 0; s < partition->sites; ++s) 
+      {
+            partition->persite_clv[parent][s] = (partition->clv[parent]) 
+              + (site_ids[parent][s] - 1) 
+              * partition->states_padded * partition->rate_cats;
+          if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+          {
+            partition->persite_scales[scaler_index][s] = 
+              partition->scale_buffer[scaler_index] + (site_ids[parent][s] - 1);
+          }
+      }
+      for (s = 0; s < additional_sites; ++s) 
+      {
+          partition->persite_clv[parent][s + partition->sites] = (partition->clv[parent]) 
+              + (curr_id + s) 
+              * partition->states_padded * partition->rate_cats; 
+          if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+          {
+            partition->persite_scales[scaler_index][s + partition->sites] = 
+              partition->scale_buffer[scaler_index] + (curr_id + s);
+          }
+      }
     }
-    for (s = 0; s < additional_sites; ++s) 
+    else 
     {
-        partition->persite_clv[parent][s + partition->sites] = (partition->clv[parent]) 
-            + (curr_id + s) 
-            * partition->states_padded * partition->rate_cats; 
+      for (s = 0; s < partition->sites + additional_sites; ++s) 
+      {
+        partition->persite_clv[parent][s] = partition->clv[parent] 
+          + s * partition->states_padded*partition->rate_cats;
         if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-        {
-          partition->persite_scales[scaler_index][s + partition->sites] = 
-            partition->scale_buffer[scaler_index] + (curr_id + s);
-        }
+          partition->persite_scales[scaler_index][s] = partition->scale_buffer[scaler_index] + s;
+      }
     }
   }
 }
