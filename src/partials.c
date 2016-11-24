@@ -251,21 +251,21 @@ static void update_repeats(pll_partition_t * partition,
       sites_to_alloc = partition->sites + additional_sites;
       
     // reallocate clvs
-    free(partition->clv[parent]);  
-    partition->clv[parent] = pll_aligned_alloc(sites_to_alloc * clv_size,
-                                            partition->alignment);
-    // reallocate scales
-    if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-    { 
-      free(partition->scale_buffer[scaler_index]);
-      partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, sizeof(unsigned int));
-    }
+    pll_aligned_free(partition->clv[parent]);  
+    fprintf(stderr, "aligned alloc %d %d %d\n", sites_to_alloc, clv_size, partition->alignment);
+    partition->clv[parent] = pll_aligned_alloc(sites_to_alloc * clv_size, partition->alignment);
     if (!partition->clv[parent]) 
     {
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg,
                200,
                "Unable to allocate enough memory for repeats structure.");
+    }
+    // reallocate scales
+    if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+    { 
+      free(partition->scale_buffer[scaler_index]);
+      partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, sizeof(unsigned int));
     }
     
     // avoid valgrind errors

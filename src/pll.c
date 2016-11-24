@@ -1184,11 +1184,12 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
 {
   unsigned int i,j,k;
 
-  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP
+      || partition->attributes & PLL_ATTRIB_SITES_REPEATS)
   {
     pll_errno = PLL_ERROR_TIPDATA_ILLEGALFUNCTION;
     snprintf(pll_errmsg, 200,
-             "Cannot use pll_set_tip_clv with PLL_ATTRIB_PATTERN_TIP.");
+             "Cannot use pll_set_tip_clv with PLL_ATTRIB_PATTERN_TIP or PLL_ATTRIB_SITES_REPEATS.");
     return PLL_FAILURE;
   }
 
