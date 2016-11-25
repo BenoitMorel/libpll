@@ -521,6 +521,10 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
                                     unsigned int count);
 
+PLL_EXPORT void pll_update_partials_top(pll_partition_t * partition,
+                                    const pll_operation_t * operations,
+                                    unsigned int count,
+                                    unsigned int topology_changed);
 
 /* functions in derivatives.c */
 

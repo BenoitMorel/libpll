@@ -252,7 +252,6 @@ static void update_repeats(pll_partition_t * partition,
       
     // reallocate clvs
     pll_aligned_free(partition->clv[parent]);  
-    fprintf(stderr, "aligned alloc %d %d %d\n", sites_to_alloc, clv_size, partition->alignment);
     partition->clv[parent] = pll_aligned_alloc(sites_to_alloc * clv_size, partition->alignment);
     if (!partition->clv[parent]) 
     {
@@ -316,17 +315,23 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
                                     unsigned int count)
 {
+  pll_update_partials_top(partition, operations, count, 1);
+}
+
+PLL_EXPORT void pll_update_partials_top(pll_partition_t * partition,
+                                    const pll_operation_t * operations,
+                                    unsigned int count,
+                                    unsigned int topology_changed)
+{
   unsigned int i;
   const pll_operation_t * op;
-
-
 
   for (i = 0; i < count; ++i)
   {
     op = &(operations[i]);
     
     
-    if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) {
+    if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && topology_changed) {
       update_repeats(partition, op);
     }
 
