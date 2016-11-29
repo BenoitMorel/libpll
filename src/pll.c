@@ -22,7 +22,7 @@
 #include "pll.h"
 
 /* at least the min value in the pll_map used */
-#define REPEATS_LOOKUP_SIZE 1000000 
+#define REPEATS_LOOKUP_SIZE 2000000 
 
 __thread int pll_errno;
 __thread char pll_errmsg[200] = {0};
