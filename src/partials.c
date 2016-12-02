@@ -228,19 +228,6 @@ static void update_repeats(pll_partition_t * partition,
     }
     repeats->pernode_max_id[parent] = curr_id;
     sites_to_alloc = curr_id + additional_sites;
-    if (sites_to_alloc > repeats->pernode_allocated_clvs[parent]) {
-      free(id_site[parent]);
-      id_site[parent] = malloc((sizeof(unsigned int) * sites_to_alloc * 3)/2);
-    }
-    for (s = 0; s < curr_id; ++s) 
-    {
-      id_site[parent][s] = id_site_buffer[s];
-      repeats->lookup_buffer[toclean_buffer[s]] = 0;
-    }
-    for (s = 0; s < additional_sites; ++s) 
-    {
-      id_site[parent][s + curr_id] = partition->sites + s;
-    }
   }
   if (sites_to_alloc > repeats->pernode_allocated_clvs[parent]) 
   {
@@ -268,13 +255,26 @@ static void update_repeats(pll_partition_t * partition,
       partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, sizeof(unsigned int));
     }
     
+    // reallocate id to site lookup  
+    free(id_site[parent]);
+    id_site[parent] = malloc(sites_to_alloc * sizeof(unsigned int));
+    
     // avoid valgrind errors
     memset(partition->clv[parent], 0, sites_to_alloc);
-    unsigned int s;
-
   }
 
-  // set lookups
+  // set id to site lookups
+  for (s = 0; s < curr_id; ++s) 
+  {
+    id_site[parent][s] = id_site_buffer[s];
+    repeats->lookup_buffer[toclean_buffer[s]] = 0;
+  }
+  for (s = 0; s < additional_sites; ++s) 
+  {
+    id_site[parent][s + curr_id] = partition->sites + s;
+  }
+
+  // set site to clv (and scales) lookups
   if (!userepeats) 
   {
     for (s = 0; s < partition->sites + additional_sites; ++s) 
@@ -285,9 +285,7 @@ static void update_repeats(pll_partition_t * partition,
         partition->persite_scales[scaler_index][s] = partition->scale_buffer[scaler_index] + s;
     }
   }
-
-  // set the lookups
-  if (userepeats) 
+  else  
   {
     for (s = 0; s < partition->sites; ++s) 
     {
