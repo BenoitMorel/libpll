@@ -182,6 +182,41 @@ static void case_innerinner(pll_partition_t * partition,
                              partition->attributes);
 }
 
+static void reallocate_repeats(pll_partition_t * partition,
+                              const pll_operation_t * op,
+                              unsigned int sites_to_alloc)
+{
+  pll_repeats_t * repeats = partition->repeats;
+  unsigned int parent = op->parent_clv_index;
+  repeats->pernode_allocated_clvs[parent] = sites_to_alloc; 
+  int scaler_index = op->parent_scaler_index;
+  unsigned int ** id_site = repeats->pernode_id_site;
+  // reallocate clvs
+  pll_aligned_free(partition->clv[parent]);  
+  partition->clv[parent] = pll_aligned_alloc(
+      sites_to_alloc * partition->states_padded 
+      * partition->rate_cats * sizeof(double), 
+      partition->alignment);
+  if (!partition->clv[parent]) 
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for repeats structure.");
+  }
+  // reallocate scales
+  if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+  { 
+    free(partition->scale_buffer[scaler_index]);
+    partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, sizeof(unsigned int));
+  }
+  // reallocate id to site lookup  
+  free(id_site[parent]);
+  id_site[parent] = malloc(sites_to_alloc * sizeof(unsigned int));
+  // avoid valgrind errors
+  memset(partition->clv[parent], 0, sites_to_alloc);
+}
+
 
 /* Fill the repeat structure in partition for the parent node of op */
 static void update_repeats(pll_partition_t * partition,
@@ -196,8 +231,6 @@ static void update_repeats(pll_partition_t * partition,
   unsigned int * toclean_buffer = repeats->toclean_buffer;
   unsigned int * id_site_buffer = repeats->id_site_buffer;
   unsigned int curr_id = 0;
-  unsigned int clv_size = partition->states_padded * 
-                              partition->rate_cats * sizeof(double);
   unsigned int min_size = repeats->pernode_max_id[left] 
                           * repeats->pernode_max_id[right];
   unsigned int additional_sites = partition->asc_bias_alloc ? partition->states : 0;
@@ -229,39 +262,9 @@ static void update_repeats(pll_partition_t * partition,
     repeats->pernode_max_id[parent] = curr_id;
     sites_to_alloc = curr_id + additional_sites;
   }
-  if (sites_to_alloc > repeats->pernode_allocated_clvs[parent]) 
-  {
-    // allocate too much to avoid too much allocations
-    sites_to_alloc = (sites_to_alloc * 3) / 2;
-    // but not more than the max needed
-    if (sites_to_alloc > partition->sites + additional_sites) 
-      sites_to_alloc = partition->sites + additional_sites;
-     
-    repeats->pernode_allocated_clvs[parent] = sites_to_alloc; 
-    // reallocate clvs
-    pll_aligned_free(partition->clv[parent]);  
-    partition->clv[parent] = pll_aligned_alloc(sites_to_alloc * clv_size, partition->alignment);
-    if (!partition->clv[parent]) 
-    {
-      pll_errno = PLL_ERROR_MEM_ALLOC;
-      snprintf(pll_errmsg,
-               200,
-               "Unable to allocate enough memory for repeats structure.");
-    }
-    // reallocate scales
-    if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-    { 
-      free(partition->scale_buffer[scaler_index]);
-      partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, sizeof(unsigned int));
-    }
-    
-    // reallocate id to site lookup  
-    free(id_site[parent]);
-    id_site[parent] = malloc(sites_to_alloc * sizeof(unsigned int));
-    
-    // avoid valgrind errors
-    memset(partition->clv[parent], 0, sites_to_alloc);
-  }
+  
+  //if (sites_to_alloc > repeats->pernode_allocated_clvs[parent]) 
+  reallocate_repeats(partition, op, sites_to_alloc);
 
   // set id to site lookups
   for (s = 0; s < curr_id; ++s) 
