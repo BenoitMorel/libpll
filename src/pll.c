@@ -556,7 +556,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   /* if site repeats are enabled, we have to allocate clvs later */
   if (!userepeats) 
   {
-    /* if tip pattern precomputation is enabled, then do not allocate CLV space
+    /* if tip pattern precomputation is enabled, 
+      then do not allocate CLV space
       for the tip nodes */
     int start = (partition->attributes & PLL_ATTRIB_PATTERN_TIP) ?
                     partition->tips : 0;
@@ -570,16 +571,17 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       {
         dealloc_partition_data(partition);
         pll_errno = PLL_ERROR_MEM_ALLOC;
-        snprintf(pll_errmsg, 200, "Unable to allocate enough memory for CLVs.");
+        snprintf(pll_errmsg, 200,"Unable to allocate enough memory for CLVs.");
         return PLL_FAILURE;
       }
-      /* zero-out CLV vectors to avoid valgrind warnings when using odd number of
-         states with vectorized code */
+      /* zero-out CLV vectors to avoid valgrind warnings when using odd 
+         number of states with vectorized code */
       memset(partition->clv[i],
             0,
             (size_t)sites_alloc*states_padded*rate_cats*sizeof(double));
       for (j = 0; j < sites_alloc; ++j) 
-        partition->persite_clv[i][j] = partition->clv[i] + j * states_padded*rate_cats;
+        partition->persite_clv[i][j] = 
+          partition->clv[i] + j * states_padded*rate_cats;
     }
   }
 
@@ -909,8 +911,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     }
     repeats->lookup_buffer_size = REPEATS_LOOKUP_SIZE;
     repeats->pernode_max_id = calloc(nodes_number, sizeof(unsigned int));
-    repeats->pernode_allocated_clvs = calloc(nodes_number, sizeof(unsigned int));
-    repeats->lookup_buffer = calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
+    repeats->pernode_allocated_clvs = 
+      calloc(nodes_number, sizeof(unsigned int));
+    repeats->lookup_buffer = 
+      calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
     repeats->toclean_buffer = malloc(partition->sites * sizeof(unsigned int));
     repeats->id_site_buffer = malloc(partition->sites * sizeof(unsigned int));
     if (!(repeats->pernode_max_id && repeats->lookup_buffer
@@ -920,8 +924,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       dealloc_partition_data(partition);
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg,
-               200,
-               "Unable to allocate enough memory for one of the repeats buffer.");
+            200,
+            "Unable to allocate enough memory for one of the repeats buffer.");
       return PLL_FAILURE;
     }
 
@@ -1089,7 +1093,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     unsigned int * lookup_buffer = repeats->lookup_buffer;
     unsigned int ** site_ids = repeats->pernode_site_id;
     unsigned int ** id_site = repeats->pernode_id_site;
-    unsigned int additional_sites = partition->asc_bias_alloc ? partition->states : 0;
+    unsigned int additional_sites = 
+      partition->asc_bias_alloc ? partition->states : 0;
 
     repeats->pernode_max_id[tip_index] = 0;
     unsigned int curr_id = 0;
@@ -1107,7 +1112,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     repeats->pernode_max_id[tip_index] = curr_id;
     // TODO should we always reallocate ?
     free(id_site[tip_index]);
-    id_site[tip_index] = malloc(sizeof(unsigned int) * (curr_id + additional_sites));
+    id_site[tip_index] = malloc(sizeof(unsigned int) 
+        * (curr_id + additional_sites));
     for (s = 0; s < curr_id; ++s) 
     {
       id_site[tip_index][s] = id_site_buffer[s];
@@ -1143,7 +1149,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
     unsigned int clvsize = partition->states_padded * partition->rate_cats;
     if (partition->repeats) {
       for (s = 0; s < partition->sites; ++s)
-        partition->persite_clv[tip_index][s] = partition->clv[tip_index] + (site_ids[tip_index][s] - 1) * clvsize;
+        partition->persite_clv[tip_index][s] = 
+          partition->clv[tip_index] + (site_ids[tip_index][s] - 1) * clvsize;
       for (s = 0; s < additional_sites; ++s) 
         partition->persite_clv[tip_index][s + partition->sites] = 
           partition->clv[tip_index] + (curr_id + s) * clvsize;

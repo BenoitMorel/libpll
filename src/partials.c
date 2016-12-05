@@ -137,16 +137,20 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int ** parent_scaler;
   unsigned int ** left_scaler;
   unsigned int ** right_scaler;
-  unsigned int additional_sites = partition->asc_bias_alloc ? partition->states : 0;
+  unsigned int additional_sites = partition->asc_bias_alloc ? 
+    partition->states : 0;
   unsigned int sites = partition->sites + additional_sites;
   unsigned int * sites_to_update = NULL; 
   unsigned int sites_to_update_number = sites; 
 
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
-      && partition->repeats && partition->repeats->pernode_max_id[op->parent_clv_index])
+      && partition->repeats 
+      && partition->repeats->pernode_max_id[op->parent_clv_index])
   {
     sites_to_update = partition->repeats->pernode_id_site[op->parent_clv_index];
-    sites_to_update_number = partition->repeats->pernode_max_id[op->parent_clv_index] + additional_sites;
+    sites_to_update_number = 
+      partition->repeats->pernode_max_id[op->parent_clv_index] 
+      + additional_sites;
   }
 
   /* get parent scaler */
@@ -208,7 +212,8 @@ static void reallocate_repeats(pll_partition_t * partition,
   if (PLL_SCALE_BUFFER_NONE != scaler_index) 
   { 
     free(partition->scale_buffer[scaler_index]);
-    partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, sizeof(unsigned int));
+    partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, 
+        sizeof(unsigned int));
   }
   // reallocate id to site lookup  
   free(id_site[parent]);
@@ -233,12 +238,14 @@ static void update_repeats(pll_partition_t * partition,
   unsigned int curr_id = 0;
   unsigned int min_size = repeats->pernode_max_id[left] 
                           * repeats->pernode_max_id[right];
-  unsigned int additional_sites = partition->asc_bias_alloc ? partition->states : 0;
+  unsigned int additional_sites = partition->asc_bias_alloc ?
+    partition->states : 0;
   unsigned int sites_to_alloc;
   int scaler_index = op->parent_scaler_index;
   unsigned int s;
   // in case site repeats is activated but not used for this node
-  unsigned int userepeats = !(!min_size || repeats->lookup_buffer_size <= min_size);
+  unsigned int userepeats = !(!min_size 
+      || repeats->lookup_buffer_size <= min_size);
   if (!userepeats)
   {
     sites_to_alloc = partition->sites + additional_sites;
@@ -285,7 +292,8 @@ static void update_repeats(pll_partition_t * partition,
       partition->persite_clv[parent][s] = partition->clv[parent] 
         + s * partition->states_padded*partition->rate_cats;
       if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-        partition->persite_scales[scaler_index][s] = partition->scale_buffer[scaler_index] + s;
+        partition->persite_scales[scaler_index][s] = 
+          partition->scale_buffer[scaler_index] + s;
     }
   }
   else  
@@ -303,7 +311,8 @@ static void update_repeats(pll_partition_t * partition,
     }
     for (s = 0; s < additional_sites; ++s) 
     {
-        partition->persite_clv[parent][s + partition->sites] = (partition->clv[parent]) 
+        partition->persite_clv[parent][s + partition->sites] = 
+          (partition->clv[parent]) 
            + (curr_id + s) 
            * partition->states_padded * partition->rate_cats; 
         if (PLL_SCALE_BUFFER_NONE != scaler_index) 
@@ -337,9 +346,8 @@ PLL_EXPORT void pll_update_partials_top(pll_partition_t * partition,
     op = &(operations[i]);
     
     
-    if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && topology_changed) {
+    if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && topology_changed) 
       update_repeats(partition, op);
-    }
 
 
 
