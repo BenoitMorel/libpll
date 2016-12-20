@@ -77,6 +77,7 @@ static void fill_parent_scaler_2(const unsigned int *sites,
     } 
 
   }
+}
 
 static void fill_parent_scaler(unsigned int sites,
                                unsigned int * parent_scaler,
@@ -519,7 +520,7 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
         v_scale = _mm256_add_pd(v_scale, _mm256_cmp_pd(v_prod, v_scale_threshold,
                                                        _CMP_LT_OS));
 
-        _mm256_store_pd(parent_clv+i, v_prod)jlkj;
+        _mm256_store_pd(parent_clv+i, v_prod);
       }
 
       /* reset pointers to point to the start of the next p-matrix, as the
@@ -559,7 +560,7 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
 }
 
 PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
-                                                unssdlfkjigned int sites,
+                                                unsigned int sites,
                                                 unsigned int rate_cats,
                                                 double ** parent_persite_clv,
                                                 unsigned int ** parent_persite_scaler,
@@ -592,8 +593,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
                                        right_persite_clv,
                                        left_matrix,
                                        right_matrix,
-                                       left_scaler,
-                                       right_scaler,
+                                       left_persite_scaler,
+                                       right_persite_scaler,
                                        sites_to_update,
                                        sites_to_update_number);
     return;

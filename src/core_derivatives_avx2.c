@@ -25,7 +25,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
                                                 unsigned int sites,
                                                 unsigned int rate_cats,
                                                 double ** parent_persite_clv,
-                                                double ** chlid_persite_clv,
+                                                double ** child_persite_clv,
                                                 double ** eigenvecs,
                                                 double ** inv_eigenvecs,
                                                 double ** freqs,
@@ -101,8 +101,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
   /* vectorized loop from update_sumtable() */
   for (n = 0; n < sites; n++)
   {
-    clvp = parent_persite_clv[n];
-    clvc = child_persite_clv[n];
+    t_clvp = parent_persite_clv[n];
+    t_clvc = child_persite_clv[n];
     const double * c_eigenvecs      = tt_eigenvecs;
     const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
     for (i = 0; i < rate_cats; ++i)

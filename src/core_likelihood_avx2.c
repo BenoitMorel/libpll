@@ -22,17 +22,17 @@
 #include "pll.h"
 
 PLL_EXPORT double pll_core_root_loglikelihood_avx2(unsigned int states,
-                                                   unsigned int sites,
-                                                   unsigned int rate_cats,
-                                                   const double * clv,
-                                                   const unsigned int * scaler,
-                                                   double ** frequencies,
-                                                   const double * rate_weights,
-                                                   const unsigned int * pattern_weights,
-                                                   const double * invar_proportion,
-                                                   const int * invar_indices,
-                                                   const unsigned int * freqs_indices,
-                                                   double * persite_lnl)
+                                                  unsigned int sites,
+                                                  unsigned int rate_cats,
+                                                  double ** persite_clv,
+                                                  unsigned int ** persite_scaler,
+                                                  double ** frequencies,
+                                                  const double * rate_weights,
+                                                  const unsigned int * pattern_weights,
+                                                  const double * invar_proportion,
+                                                  const int * invar_indices,
+                                                  const unsigned int * freqs_indices,
+                                                  double * persite_lnl)
 {
   unsigned int i,j,k,m = 0;
   double logl = 0;
@@ -40,6 +40,8 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx2(unsigned int states,
 
   const double * freqs = NULL;
 
+  const double *clv;
+  
   double term, term_r;
   double inv_site_lk;
 
@@ -49,6 +51,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx2(unsigned int states,
 
   for (i = 0; i < sites; ++i)
   {
+    clv = persite_clv[i];
     term = 0;
     for (j = 0; j < rate_cats; ++j)
     {
@@ -93,8 +96,8 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx2(unsigned int states,
 
     /* compute site log-likelihood and scale if necessary */
     term = log(term) * pattern_weights[i];
-    if (scaler && scaler[i])
-      term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+    if (persite_scaler && *persite_scaler[i])
+      term += *persite_scaler[i] * log(PLL_SCALE_THRESHOLD);
 
     /* store per-site log-likelihood */
     if (persite_lnl)
