@@ -270,8 +270,8 @@ static void update_repeats(pll_partition_t * partition,
     sites_to_alloc = curr_id + additional_sites;
   }
   
-  //if (sites_to_alloc > repeats->pernode_allocated_clvs[parent]) 
-  reallocate_repeats(partition, op, sites_to_alloc);
+  if (sites_to_alloc > repeats->pernode_allocated_clvs[parent]) 
+    reallocate_repeats(partition, op, sites_to_alloc);
 
   // set id to site lookups
   for (s = 0; s < curr_id; ++s) 
