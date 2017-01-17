@@ -80,38 +80,6 @@ static void fill_parent_scaler_2(const unsigned int *sites,
 }
 
 
-static void fill_parent_scaler_repeats(unsigned int * parent_scaler,
-                               const unsigned int * psites,
-                               unsigned int parent_clv_size,
-                               const unsigned int * left_scaler,
-                               const unsigned int * lids,
-                               const unsigned int * right_scaler,
-                               const unsigned int *rids)
-{
-  unsigned int i;
-  if (!left_scaler && !right_scaler) 
-  {
-    for (i = 0; i < parent_clv_size; ++i) 
-    {
-      parent_scaler[i] = 0;
-    }
-  } 
-  else if (left_scaler && right_scaler) 
-  {
-    for (i = 0; i < parent_clv_size; ++i) 
-      parent_scaler[i] = left_scaler[lids[psites[i]] - 1] + right_scaler[rids[psites[i]] - 1];
-  }
-  else if (left_scaler) 
-  {
-    for (i = 0; i < parent_clv_size; ++i) 
-      parent_scaler[i] = left_scaler[lids[psites[i]] - 1];
-  }
-  else 
-  {
-    for (i = 0; i < parent_clv_size; ++i) 
-      parent_scaler[i] = right_scaler[rids[psites[i]] - 1];
-  } 
-}
 
 static void fill_parent_scaler(unsigned int sites,
                                unsigned int * parent_scaler,
@@ -136,6 +104,79 @@ static void fill_parent_scaler(unsigned int sites,
       memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites);
   }
 }
+
+// NOT OPTIMAL
+static void fill_parent_scaler_repeats(unsigned int * parent_scaler,
+                               const unsigned int * psites,
+                               unsigned int sites,
+                               const unsigned int * left_scaler,
+                               const unsigned int * lids,
+                               const unsigned int * right_scaler,
+                               const unsigned int *rids)
+{
+  if (!lids && !rids) 
+  {
+    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+    return;
+  }
+  unsigned int i;
+  if (!psites) {
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    if (left_scaler) 
+    {
+      if (lids) 
+      {
+        for (i = 0; i < sites; ++i) 
+          parent_scaler[i] += left_scaler[lids[i] - 1];
+      }
+      else
+      {
+        for (i = 0; i < sites; ++i)
+          parent_scaler[i] += left_scaler[i];
+      }
+    }
+    if (right_scaler) 
+    {
+      if (rids) 
+      {
+        for (i = 0; i < sites; ++i) 
+          parent_scaler[i] += right_scaler[rids[i] - 1];
+      }
+      else
+      {
+        for (i = 0; i < sites; ++i)
+          parent_scaler[i] += right_scaler[i];
+      }
+    }
+  }
+  else 
+  {
+
+    if (!left_scaler && !right_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+      {
+        parent_scaler[i] = 0;
+      }
+    } 
+    else if (left_scaler && right_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+        parent_scaler[i] = left_scaler[lids[psites[i]] - 1] + right_scaler[rids[psites[i]] - 1];
+    }
+    else if (left_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+        parent_scaler[i] = left_scaler[lids[psites[i]] - 1];
+    }
+    else 
+    {
+      for (i = 0; i < sites; ++i) 
+        parent_scaler[i] = right_scaler[rids[psites[i]] - 1];
+    } 
+  }
+}
+
 
 PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            unsigned int rate_cats,

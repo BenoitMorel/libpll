@@ -145,7 +145,8 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int sites = partition->sites + additional_sites;
   unsigned int * sites_to_update = NULL; 
   unsigned int sites_to_update_number = sites; 
-
+  unsigned int *lsite_id = 0;
+  unsigned int *rsite_id = 0;
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
       && partition->repeats 
       && partition->repeats->pernode_max_id[op->parent_clv_index])
@@ -154,6 +155,15 @@ static void case_innerinner(pll_partition_t * partition,
     sites_to_update_number = 
       partition->repeats->pernode_max_id[op->parent_clv_index] 
       + additional_sites;
+  }
+
+  if (partition->repeats) {
+    if (partition->repeats->pernode_max_id[op->child1_clv_index]) {
+      lsite_id =  partition->repeats->pernode_site_id[op->child1_clv_index];
+    }
+    if (partition->repeats->pernode_max_id[op->child2_clv_index]) {
+      rsite_id =  partition->repeats->pernode_site_id[op->child2_clv_index];
+    }
   }
 
   /* get parent scaler */
@@ -192,20 +202,19 @@ static void case_innerinner(pll_partition_t * partition,
 #ifdef HAVE_AVX
   if (partition->repeats &&
       partition->attributes & PLL_ATTRIB_ARCH_AVX && partition->states == 4) {
-    fprintf(stderr, "avx 4x4 nopersite functionn\n");
     pll_core_update_partial_ii_nop_4x4_avx(sites,
                                      partition->rate_cats,
                                      partition->clv[op->parent_clv_index],
                                      pscaler,
                                      partition->clv[op->child1_clv_index],
-                                     partition->repeats->pernode_site_id[op->child1_clv_index],
+                                     lsite_id,
                                      partition->clv[op->child2_clv_index],
-                                     partition->repeats->pernode_site_id[op->child2_clv_index],
+                                     rsite_id,
                                      left_matrix,
                                      right_matrix,
                                      lscaler,
                                      rscaler,
-                                     partition->repeats->pernode_id_site[op->parent_clv_index],
+                                     sites_to_update,
                                      sites_to_update_number,
                                      partition->attributes);
     return;
