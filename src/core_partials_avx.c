@@ -79,6 +79,40 @@ static void fill_parent_scaler_2(const unsigned int *sites,
   }
 }
 
+
+static void fill_parent_scaler_repeats(unsigned int * parent_scaler,
+                               const unsigned int * psites,
+                               unsigned int parent_clv_size,
+                               const unsigned int * left_scaler,
+                               const unsigned int * lids,
+                               const unsigned int * right_scaler,
+                               const unsigned int *rids)
+{
+  unsigned int i;
+  if (!left_scaler && !right_scaler) 
+  {
+    for (i = 0; i < parent_clv_size; ++i) 
+    {
+      parent_scaler[i] = 0;
+    }
+  } 
+  else if (left_scaler && right_scaler) 
+  {
+    for (i = 0; i < parent_clv_size; ++i) 
+      parent_scaler[i] = left_scaler[lids[psites[i]] - 1] + right_scaler[rids[psites[i]] - 1];
+  }
+  else if (left_scaler) 
+  {
+    for (i = 0; i < parent_clv_size; ++i) 
+      parent_scaler[i] = left_scaler[lids[psites[i]] - 1];
+  }
+  else 
+  {
+    for (i = 0; i < parent_clv_size; ++i) 
+      parent_scaler[i] = right_scaler[rids[psites[i]] - 1];
+  } 
+}
+
 static void fill_parent_scaler(unsigned int sites,
                                unsigned int * parent_scaler,
                                const unsigned int * left_scaler,
@@ -417,6 +451,154 @@ PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
 
         lookup += states;
       }
+    }
+  }
+}
+
+PLL_EXPORT void pll_core_update_partial_ii_nop_4x4_avx(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           double * left_clv,
+                                           unsigned int * left_site_id,
+                                           double * right_clv,
+                                           unsigned int * right_site_id,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler,
+                                           const unsigned int * sites_to_update,
+                                           unsigned int sites_to_update_number,
+                                           unsigned int attrib)
+{
+  unsigned int states = 4;
+  unsigned int n,k,i;
+  unsigned int scaling;
+
+  const double * lmat;
+  const double * rmat;
+
+  __m256d ymm0,ymm1,ymm2,ymm3,ymm4,ymm5,ymm6,ymm7;
+  __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
+
+  unsigned int span = states * rate_cats;
+
+  /* add up the scale vector of the two children if available */
+  if (parent_scaler)
+    fill_parent_scaler_repeats(parent_scaler, sites_to_update, sites_to_update_number, 
+        left_scaler, left_site_id, right_scaler, right_site_id);
+
+  for (n = 0; n < sites_to_update_number; ++n)
+  {
+    unsigned int site = sites_to_update ? sites_to_update[n] : n;
+    unsigned int lid = left_site_id ? left_site_id[site] - 1 : site;
+    unsigned int rid = right_site_id ? right_site_id[site] - 1 : site;
+    double *lclv = &left_clv[lid * span];
+    double *rclv = &right_clv[rid * span];
+    lmat = left_matrix;
+    rmat = right_matrix;
+    scaling = (parent_scaler) ? 1 : 0;
+
+    for (k = 0; k < rate_cats; ++k)
+    {
+      /* compute vector of x */
+      xmm4 = _mm256_load_pd(lmat);
+      xmm5 = _mm256_load_pd(lclv);
+      xmm0 = _mm256_mul_pd(xmm4,xmm5);
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm5 = _mm256_load_pd(rclv);
+      ymm0 = _mm256_mul_pd(ymm4,ymm5);
+
+      lmat += states;
+      rmat += states;
+
+      xmm4 = _mm256_load_pd(lmat);
+      xmm1 = _mm256_mul_pd(xmm4,xmm5);
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm1 = _mm256_mul_pd(ymm4,ymm5);
+
+      lmat += states;
+      rmat += states;
+
+      xmm4 = _mm256_load_pd(lmat);
+      xmm2 = _mm256_mul_pd(xmm4,xmm5);
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm2 = _mm256_mul_pd(ymm4,ymm5);
+
+      lmat += states;
+      rmat += states;
+
+      xmm4 = _mm256_load_pd(lmat);
+      xmm3 = _mm256_mul_pd(xmm4,xmm5);
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm3 = _mm256_mul_pd(ymm4,ymm5);
+
+      lmat += states;
+      rmat += states;
+
+      /* compute x */
+      xmm4 = _mm256_unpackhi_pd(xmm0,xmm1);
+      xmm5 = _mm256_unpacklo_pd(xmm0,xmm1);
+
+      xmm6 = _mm256_unpackhi_pd(xmm2,xmm3);
+      xmm7 = _mm256_unpacklo_pd(xmm2,xmm3);
+
+      xmm0 = _mm256_add_pd(xmm4,xmm5);
+      xmm1 = _mm256_add_pd(xmm6,xmm7);
+
+      xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+      xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+      xmm4 = _mm256_add_pd(xmm2,xmm3);
+
+      /* compute y */
+      ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
+      ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
+
+      ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
+      ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
+
+      ymm0 = _mm256_add_pd(ymm4,ymm5);
+      ymm1 = _mm256_add_pd(ymm6,ymm7);
+
+      ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
+      ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
+      ymm4 = _mm256_add_pd(ymm2,ymm3);
+
+      /* compute x*y */
+      xmm0 = _mm256_mul_pd(xmm4,ymm4);
+
+      _mm256_store_pd(parent_clv, xmm0);
+
+      for (i = 0; i < states; ++i)
+        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
+
+      parent_clv += states;
+      lclv  += states;
+      rclv  += states;
+    }
+
+    /* if *all* entries of the site CLV were below the threshold then scale
+       (all) entries by PLL_SCALE_FACTOR */
+    if (scaling)
+    {
+      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR);
+
+      parent_clv -= span;
+      for (i = 0; i < span; i += 4)
+      {
+        __m256d v_prod = _mm256_load_pd(parent_clv + i);
+        v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
+        _mm256_store_pd(parent_clv + i, v_prod);
+      }
+      parent_clv += span;
+      parent_scaler[n] += 1;
     }
   }
 }

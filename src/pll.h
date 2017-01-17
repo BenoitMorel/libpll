@@ -88,6 +88,7 @@
 
 /* sites repeats */
 #define PLL_ATTRIB_SITES_REPEATS    (1 << 9)
+#define PLL_ATTRIB_SITES_REPEATS_NOUPPERSITE    (1 << 10)
 
 /* topological rearrangements */
 
@@ -1069,6 +1070,21 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    unsigned int ** right_persite_scaler,
                                                    const unsigned int * sites_to_update,
                                                    unsigned int sites_to_update_number);
+PLL_EXPORT void pll_core_update_partial_ii_nop_4x4_avx(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           double * left_clv,
+                                           unsigned int * left_site_id,
+                                           double * right_clv,
+                                           unsigned int * right_site_id,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler,
+                                           const unsigned int * sites_to_update,
+                                           unsigned int sites_to_update_number,
+                                           unsigned int attrib);
 #endif
 
 /* functions in core_partials_avx2.c */

@@ -137,6 +137,9 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int ** parent_scaler;
   unsigned int ** left_scaler;
   unsigned int ** right_scaler;
+  unsigned int *pscaler;
+  unsigned int *lscaler;
+  unsigned int *rscaler;
   unsigned int additional_sites = partition->asc_bias_alloc ? 
     partition->states : 0;
   unsigned int sites = partition->sites + additional_sites;
@@ -155,20 +158,60 @@ static void case_innerinner(pll_partition_t * partition,
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+  {
     parent_scaler = NULL;
-  else
+    pscaler = NULL;
+  }
+  else 
+  {
     parent_scaler = partition->persite_scales[op->parent_scaler_index];
-
-  if (op->child1_scaler_index != PLL_SCALE_BUFFER_NONE)
+    pscaler = partition->scale_buffer[op->parent_scaler_index];
+  }
+  if (op->child1_scaler_index != PLL_SCALE_BUFFER_NONE) 
+  {
     left_scaler = partition->persite_scales[op->child1_scaler_index];
-  else
+    lscaler = partition->scale_buffer[op->child1_scaler_index];
+  }
+  else 
+  {
     left_scaler = NULL;
+    lscaler = NULL;
+  }
 
   /* if child2 has a scaler add its values to the parent scaler */
-  if (op->child2_scaler_index != PLL_SCALE_BUFFER_NONE)
+  if (op->child2_scaler_index != PLL_SCALE_BUFFER_NONE) 
+  {
     right_scaler = partition->persite_scales[op->child2_scaler_index];
+    rscaler = partition->scale_buffer[op->child2_scaler_index];
+  }
   else
+  {
     right_scaler = NULL;
+    rscaler = NULL;
+  }
+#ifdef HAVE_AVX
+  if (partition->repeats &&
+      partition->attributes & PLL_ATTRIB_ARCH_AVX && partition->states == 4) {
+    fprintf(stderr, "avx 4x4 nopersite functionn\n");
+    pll_core_update_partial_ii_nop_4x4_avx(sites,
+                                     partition->rate_cats,
+                                     partition->clv[op->parent_clv_index],
+                                     pscaler,
+                                     partition->clv[op->child1_clv_index],
+                                     partition->repeats->pernode_site_id[op->child1_clv_index],
+                                     partition->clv[op->child2_clv_index],
+                                     partition->repeats->pernode_site_id[op->child2_clv_index],
+                                     left_matrix,
+                                     right_matrix,
+                                     lscaler,
+                                     rscaler,
+                                     partition->repeats->pernode_id_site[op->parent_clv_index],
+                                     sites_to_update_number,
+                                     partition->attributes);
+    return;
+  }
+#endif
+
 
   pll_core_update_partial_ii(partition->states,
                              sites,
@@ -240,6 +283,8 @@ static void update_repeats(pll_partition_t * partition,
                           * repeats->pernode_max_id[right];
   unsigned int additional_sites = partition->asc_bias_alloc ?
     partition->states : 0;
+  unsigned int uppersite = !(PLL_ATTRIB_SITES_REPEATS_NOUPPERSITE & partition->attributes);
+  uppersite |= !repeats->pernode_allocated_clvs[parent];
   unsigned int sites_to_alloc;
   int scaler_index = op->parent_scaler_index;
   unsigned int s;
@@ -284,59 +329,61 @@ static void update_repeats(pll_partition_t * partition,
     id_site[parent][s + curr_id] = partition->sites + s;
   }
 
-  // set site to clv (and scales) lookups
-  if (!userepeats) 
-  {
-    for (s = 0; s < partition->sites + additional_sites; ++s) 
+  if (uppersite) {
+    // set site to clv (and scales) lookups
+    if (!userepeats) 
     {
-      partition->persite_clv[parent][s] = partition->clv[parent] 
-        + s * partition->states_padded*partition->rate_cats;
-      if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-        partition->persite_scales[scaler_index][s] = 
-          partition->scale_buffer[scaler_index] + s;
+      for (s = 0; s < partition->sites + additional_sites; ++s) 
+      {
+        partition->persite_clv[parent][s] = partition->clv[parent] 
+          + s * partition->states_padded*partition->rate_cats;
+        if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+          partition->persite_scales[scaler_index][s] = 
+            partition->scale_buffer[scaler_index] + s;
+      }
     }
-  }
-  else  
-  {
-    for (s = 0; s < partition->sites; ++s) 
+    else  
     {
-          partition->persite_clv[parent][s] = (partition->clv[parent]) 
-            + (site_ids[parent][s] - 1) 
-            * partition->states_padded * partition->rate_cats;
+      for (s = 0; s < partition->sites; ++s) 
+      {
+        partition->persite_clv[parent][s] = (partition->clv[parent]) 
+          + (site_ids[parent][s] - 1) 
+          * partition->states_padded * partition->rate_cats;
         if (PLL_SCALE_BUFFER_NONE != scaler_index) 
         {
           partition->persite_scales[scaler_index][s] = 
             partition->scale_buffer[scaler_index] + (site_ids[parent][s] - 1);
         }
-    }
-    for (s = 0; s < additional_sites; ++s) 
-    {
+      }
+      for (s = 0; s < additional_sites; ++s) 
+      {
         partition->persite_clv[parent][s + partition->sites] = 
           (partition->clv[parent]) 
-           + (curr_id + s) 
-           * partition->states_padded * partition->rate_cats; 
+          + (curr_id + s) 
+          * partition->states_padded * partition->rate_cats; 
         if (PLL_SCALE_BUFFER_NONE != scaler_index) 
         {
           partition->persite_scales[scaler_index][s + partition->sites] = 
             partition->scale_buffer[scaler_index] + (curr_id + s);
         }
+      }
     }
   }
 
 }
 
-  
+
 PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
-                                    const pll_operation_t * operations,
-                                    unsigned int count)
+    const pll_operation_t * operations,
+    unsigned int count)
 {
   pll_update_partials_top(partition, operations, count, 1);
 }
 
 PLL_EXPORT void pll_update_partials_top(pll_partition_t * partition,
-                                    const pll_operation_t * operations,
-                                    unsigned int count,
-                                    unsigned int topology_changed)
+    const pll_operation_t * operations,
+    unsigned int count,
+    unsigned int topology_changed)
 {
   unsigned int i;
   const pll_operation_t * op;
@@ -344,8 +391,8 @@ PLL_EXPORT void pll_update_partials_top(pll_partition_t * partition,
   for (i = 0; i < count; ++i)
   {
     op = &(operations[i]);
-    
-    
+
+
     if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && topology_changed) 
       update_repeats(partition, op);
 
@@ -360,7 +407,7 @@ PLL_EXPORT void pll_update_partials_top(pll_partition_t * partition,
         case_tiptip(partition,op);
       }
       else if ((operations[i].child1_clv_index < partition->tips) ||
-               (operations[i].child2_clv_index < partition->tips))
+          (operations[i].child2_clv_index < partition->tips))
       {
         /* tip-inner */
         case_tipinner(partition,op);
