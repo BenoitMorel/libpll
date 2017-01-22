@@ -171,6 +171,39 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   return PLL_SUCCESS;
 }
 
+PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * parent_clv,
+                                           const unsigned int * parent_site_id,
+                                           const double * child_clv,
+                                           const unsigned int * child_site_id,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           unsigned int attrib)
+{
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    return pll_core_update_sumtable_repeats_avx(states,
+                                                sites,
+                                                rate_cats,
+                                                parent_clv,
+                                                parent_site_id,
+                                                child_clv,
+                                                child_site_id,
+                                                eigenvecs,
+                                                inv_eigenvecs,
+                                                freqs,
+                                                sumtable);
+  }
+#endif
+  return PLL_FAILURE;
+}
+
+
 PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,

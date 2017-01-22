@@ -436,13 +436,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
   
-  if ((attributes & PLL_ATTRIB_SITES_REPEATS) && states != 4)
-  {
-    pll_errno = PLL_ERROR_PARAM_INVALID;
-    snprintf(pll_errmsg, 200, "Repeats are not implemented for states != 4.");
-    return PLL_FAILURE;
-  }
-  
   if ((attributes & PLL_ATTRIB_SITES_REPEATS) && (attributes & PLL_ATTRIB_PATTERN_TIP))
   {
     pll_errno = PLL_ERROR_PARAM_INVALID;

@@ -515,7 +515,7 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
          order to populate partition->invariant beforehand. It can be freed
          afterwards. */
       unsigned int span_padded = partition->rate_cats * partition->states_padded;
-
+      
       for (j = 0; j < sites; ++j)
       {
         unsigned int clv_shift = j*span_padded;
@@ -523,7 +523,15 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
         unsigned int state = gap_state;
         for (i = 0; i < tips; ++i)
         {
-          tipclv = partition->clv[i] + clv_shift;
+          if (partition->repeats && partition->repeats->pernode_max_id[i]) 
+          {
+            tipclv = partition->clv[i] 
+              + partition->repeats->pernode_site_id[i][j] * span_padded; 
+          } 
+          else 
+          {
+            tipclv = partition->clv[i] + clv_shift;
+          } 
           cur_state = 0;
           for (k = 0; k < states; ++k)
           {
@@ -612,20 +620,21 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     unsigned int span_padded = rate_cats * states_padded;
     for (i = 0; i < tips; ++i)
     {
-      unsigned int identifiers = 
-        (partition->repeats && partition->repeats->pernode_max_id[i]) 
-        ? partition->repeats->pernode_max_id[i] 
-        : sites;
-      tipclv = partition->clv[i];
-      for (j = 0; j < identifiers; ++j)
+      const unsigned int * site_id = NULL;
+      if (partition->repeats && partition->repeats->pernode_max_id[i]) 
       {
+        site_id = partition->repeats->pernode_site_id[i];
+      }
+      for (j = 0; j < sites; ++j)
+      {
+        unsigned int site = site_id ? site_id[j] - 1 : j;
+        tipclv = partition->clv[i] + span_padded * site;
         state = 0;
         for (k = 0; k < states; ++k)
         {
           state |= ((unsigned int)tipclv[k] << k);
         }
-          invariant[j] &= state;
-        tipclv += span_padded;
+        invariant[j] &= state;
       }
     }
   }

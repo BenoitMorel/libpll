@@ -128,8 +128,33 @@ static int sumtable_innerinner(pll_partition_t * partition,
     freqs[i] = partition->frequencies[params_indices[i]];
   }
 
-  retval =
-  pll_core_update_sumtable_ii(partition->states,
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) {
+    const unsigned int * parent_site_id =
+      partition->repeats->pernode_max_id[parent_clv_index]
+      ? partition->repeats->pernode_site_id[parent_clv_index]
+      : NULL;
+    const unsigned int * child_site_id =
+      partition->repeats->pernode_max_id[child_clv_index]
+      ? partition->repeats->pernode_site_id[child_clv_index]
+      : NULL;
+    retval =
+    pll_core_update_sumtable_repeats(partition->states,
+                              sites,
+                              partition->rate_cats,
+                              partition->clv[parent_clv_index],
+                              parent_site_id,
+                              partition->clv[child_clv_index],
+                              child_site_id,
+                              eigenvecs,
+                              inv_eigenvecs,
+                              freqs,
+                              sumtable,
+                              partition->attributes);
+  }
+  else 
+  {
+    retval =
+    pll_core_update_sumtable_ii(partition->states,
                               sites,
                               partition->rate_cats,
                               partition->clv[parent_clv_index],
@@ -139,7 +164,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
                               freqs,
                               sumtable,
                               partition->attributes);
-
+  }
   free(freqs);
   free(eigenvecs);
   free(inv_eigenvecs);

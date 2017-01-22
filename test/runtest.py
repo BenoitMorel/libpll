@@ -40,7 +40,7 @@ import time
 #####################
 #   Configuration   #
 #####################
-do_memtest       =  0                 # Evaluate memory leaks
+do_memtest       =  1                 # Evaluate memory leaks
 num_replicates   = 20                 # Number of samples for the speed test
 all_args         = [18, 0,1,2,3,4,5,8,9,18]  # 0: No vector / No tip pattern
                                       # 1: No vector / Tip pattern
