@@ -183,6 +183,96 @@ double pll_core_root_loglikelihood_4x4_avx(unsigned int sites,
   return logl;
 }
 
+PLL_EXPORT double pll_core_root_loglikelihood_repeats_avx(unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_cats,
+                                                  const double * clv,
+                                                  const unsigned int * site_id,
+                                                  const unsigned int * scaler,
+                                                  double ** frequencies,
+                                                  const double * rate_weights,
+                                                  const unsigned int * pattern_weights,
+                                                  const double * invar_proportion,
+                                                  const int * invar_indices,
+                                                  const unsigned int * freqs_indices,
+                                                  double * persite_lnl)
+{
+  unsigned int i,j,k,m = 0;
+  double logl = 0;
+  double prop_invar = 0;
+
+  const double * freqs = NULL;
+
+  double term, term_r;
+  double inv_site_lk;
+
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int span = states_padded * rate_cats;
+  __m256d xmm0, xmm1, xmm2, xmm3;
+
+  for (i = 0; i < sites; ++i)
+  {
+    unsigned int id = site_id ? site_id[i] - 1 : i;
+    const double *clvp = &clv[id * span];
+    term = 0;
+    for (j = 0; j < rate_cats; ++j)
+    {
+      freqs = frequencies[freqs_indices[j]];
+      xmm3 = _mm256_setzero_pd();
+
+      for (k = 0; k < states_padded; k += 4)
+      {
+        /* load frequencies for current rate matrix */
+        xmm0 = _mm256_load_pd(freqs);
+
+        /* load clv */
+        xmm1 = _mm256_load_pd(clvp);
+
+        /* multiply with frequencies */
+        xmm2 = _mm256_mul_pd(xmm0,xmm1);
+
+        xmm3 = _mm256_add_pd(xmm3,xmm2);
+
+        freqs += 4;
+        clvp += 4;
+      }
+
+      /* add up the elements of xmm2 */
+      xmm1 = _mm256_hadd_pd(xmm3,xmm3);
+
+      term_r = ((double *)&xmm1)[0] + ((double *)&xmm1)[2];
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[j]] : 0;
+      if (prop_invar > 0)
+      {
+        freqs = frequencies[freqs_indices[j]];
+        inv_site_lk = (invar_indices[i] == -1) ?
+                           0 : freqs[invar_indices[i]];
+        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+                                   inv_site_lk*prop_invar);
+      }
+      else
+      {
+        term += term_r * rate_weights[j];
+      }
+    }
+
+    /* compute site log-likelihood and scale if necessary */
+    term = log(term) * pattern_weights[i];
+    if (scaler && scaler[id])
+      term += scaler[id] * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = term;
+
+    logl += term;
+  }
+  return logl;
+}
+
+
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                               unsigned int rate_cats,
@@ -833,6 +923,308 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
   }
   return logl;
 }
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const unsigned int * parent_site_id,
+                                              const double * child_clv,
+                                              const unsigned int * child_scaler,
+                                              const unsigned int * child_site_id,
+                                              const double * pmatrix,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl)
+{
+  unsigned int n,i,m = 0;
+  double logl = 0;
+  double prop_invar = 0;
+
+  const double * pmat;
+  const double * freqs = NULL;
+
+  double terma, terma_r;
+  double site_lk, inv_site_lk;
+
+  unsigned int scale_factors;
+  unsigned int states = 4;
+  unsigned int states_padded = 4;
+  unsigned int span = states * rate_cats;
+
+  __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6;
+  
+  for (n = 0; n < sites; ++n)
+  {
+    unsigned int pid = parent_site_id ? parent_site_id[n] - 1 : n;
+    unsigned int cid = child_site_id ? child_site_id[n] - 1 : n;
+    const double *clvp = &parent_clv[pid * span];
+    const double *clvc = &child_clv[cid * span];
+    pmat = pmatrix;
+    terma = 0;
+    for (i = 0; i < rate_cats; ++i)
+    {
+      freqs = frequencies[freqs_indices[i]];
+
+      /* load frequencies for current rate matrix */
+      xmm0 = _mm256_load_pd(freqs);
+
+      /* load clvc */
+      xmm1 = _mm256_load_pd(clvc);
+
+      /* load pmatrix row 1 and multiply with clvc */
+      xmm2 = _mm256_load_pd(pmat);
+      xmm3 = _mm256_mul_pd(xmm1,xmm2);
+
+      /* load pmatrix row 2 and multiply with clvc */
+      pmat += states;
+      xmm2 = _mm256_load_pd(pmat);
+      xmm4 = _mm256_mul_pd(xmm1,xmm2);
+
+      /* load pmatrix row 3 and multiply with clvc */
+      pmat += states;
+      xmm2 = _mm256_load_pd(pmat);
+      xmm5 = _mm256_mul_pd(xmm1,xmm2);
+
+      /* load pmatrix row 4 and multiply with clvc */
+      pmat += states;
+      xmm2 = _mm256_load_pd(pmat);
+      xmm6 = _mm256_mul_pd(xmm1,xmm2);
+
+      /* point to the pmatrix for the next rate category */
+      pmat += states;
+
+      /* create a vector containing the sums of xmm3, xmm4, xmm5, xmm6 */
+      xmm1 = _mm256_unpackhi_pd(xmm3,xmm4);
+      xmm2 = _mm256_unpacklo_pd(xmm3,xmm4);
+
+      xmm3 = _mm256_unpackhi_pd(xmm5,xmm6);
+      xmm4 = _mm256_unpacklo_pd(xmm5,xmm6);
+
+      xmm5 = _mm256_add_pd(xmm1,xmm2);
+      xmm6 = _mm256_add_pd(xmm3,xmm4);
+
+      xmm1 = _mm256_permute2f128_pd(xmm5,xmm6, _MM_SHUFFLE(0,2,0,1));
+      xmm2 = _mm256_blend_pd(xmm5,xmm6,12);
+      xmm3 = _mm256_add_pd(xmm1,xmm2);
+
+      /* multiply with frequencies */
+      xmm1 = _mm256_mul_pd(xmm0,xmm3);
+
+      /* multiply with clvp */
+      xmm2 = _mm256_load_pd(clvp);
+      xmm0 = _mm256_mul_pd(xmm1,xmm2);
+
+      /* add up the elements of xmm0 */
+      xmm1 = _mm256_hadd_pd(xmm0,xmm0);
+      terma_r = ((double *)&xmm1)[0] + ((double *)&xmm1)[2];
+
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (invar_indices[n] == -1) ?
+                          0 : freqs[invar_indices[n]];
+        terma += rate_weights[i] * (terma_r * (1 - prop_invar) +
+                 inv_site_lk * prop_invar);
+      }
+      else
+      {
+        terma += terma_r * rate_weights[i];
+      }
+
+      clvp += states_padded;
+      clvc += states_padded;
+    }
+
+    /* count number of scaling factors to acount for */
+    scale_factors = (parent_scaler) ? parent_scaler[pid] : 0;
+    scale_factors += (child_scaler) ? child_scaler[cid] : 0;
+
+    /* compute site log-likelihood and scale if necessary */
+    site_lk = log(terma) * pattern_weights[n];
+    if (scale_factors)
+      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = site_lk;
+
+    logl += site_lk;
+  }
+  return logl;
+}
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_repeats_avx(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const unsigned int * parent_site_id,
+                                              const double * child_clv,
+                                              const unsigned int * child_scaler,
+                                              const unsigned int * child_site_id,
+                                              const double * pmatrix,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl)
+{
+
+  unsigned int n,i,j,k,m = 0;
+  double logl = 0;
+  double prop_invar = 0;
+
+  const double * pmat;
+  const double * freqs = NULL;
+
+  double terma, terma_r;
+  double site_lk, inv_site_lk;
+
+  unsigned int scale_factors;
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+
+  __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
+
+  unsigned int span = rate_cats*states_padded;
+  size_t displacement = (states_padded - states) * (states_padded);
+
+  for (n = 0; n < sites; ++n)
+  {
+    unsigned int pid = parent_site_id ? parent_site_id[n] - 1 : n;
+    unsigned int cid = child_site_id ? child_site_id[n] - 1 : n;
+    const double *clvp = &parent_clv[pid * span];
+    const double *clvc = &child_clv[cid * span];
+    pmat = pmatrix;
+    terma = 0;
+    for (i = 0; i < rate_cats; ++i)
+    {
+      freqs = frequencies[freqs_indices[i]];
+      terma_r = 0;
+      
+      /* iterate over quadruples of rows */
+      for (j = 0; j < states_padded; j += 4)
+      {
+        xmm0 = _mm256_setzero_pd();
+        xmm1 = _mm256_setzero_pd();
+        xmm2 = _mm256_setzero_pd();
+        xmm3 = _mm256_setzero_pd();
+
+        /* point to the four rows */
+        const double * row0 = pmat;
+        const double * row1 = row0 + states_padded;
+        const double * row2 = row1 + states_padded;
+        const double * row3 = row2 + states_padded;
+        
+        /* iterate quadruples of columns */
+        for (k = 0; k < states_padded; k += 4)
+        {
+          xmm5 = _mm256_load_pd(clvc+k);
+
+          /* row 0 */
+          xmm4 = _mm256_load_pd(row0);
+          xmm6 = _mm256_mul_pd(xmm4,xmm5);
+          xmm0 = _mm256_add_pd(xmm0,xmm6);
+          row0 += 4;
+
+          /* row 1 */
+          xmm4 = _mm256_load_pd(row1);
+          xmm6 = _mm256_mul_pd(xmm4,xmm5);
+          xmm1 = _mm256_add_pd(xmm1,xmm6);
+          row1 += 4;
+          
+          /* row 2 */
+          xmm4 = _mm256_load_pd(row2);
+          xmm6 = _mm256_mul_pd(xmm4,xmm5);
+          xmm2 = _mm256_add_pd(xmm2,xmm6);
+          row2 += 4;
+
+          /* row 3 */
+          xmm4 = _mm256_load_pd(row3);
+          xmm6 = _mm256_mul_pd(xmm4,xmm5);
+          xmm3 = _mm256_add_pd(xmm3,xmm6);
+          row3 += 4;
+        }
+
+        /* point pmatrix to the next four rows */ 
+        pmat = row3;
+
+        /* create a vector containing the sums of xmm0, xmm1, xmm2, xmm3 */
+        xmm4 = _mm256_unpackhi_pd(xmm0,xmm1);
+        xmm5 = _mm256_unpacklo_pd(xmm0,xmm1);
+
+        xmm6 = _mm256_unpackhi_pd(xmm2,xmm3);
+        xmm7 = _mm256_unpacklo_pd(xmm2,xmm3);
+
+        xmm0 = _mm256_add_pd(xmm4,xmm5);
+        xmm1 = _mm256_add_pd(xmm6,xmm7);
+
+        xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+        xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+        xmm0 = _mm256_add_pd(xmm2,xmm3);
+
+        /* multiply with frequencies */
+        xmm1 = _mm256_load_pd(freqs);
+        xmm2 = _mm256_mul_pd(xmm0,xmm1);
+
+        /* multiply with clvp */
+        xmm0 = _mm256_load_pd(clvp);
+        xmm1 = _mm256_mul_pd(xmm2,xmm0);
+
+        /* add up the elements of xmm1 */
+        xmm0 = _mm256_hadd_pd(xmm1,xmm1);
+        terma_r += ((double *)&xmm0)[0] + ((double *)&xmm0)[2];
+
+        freqs += 4;
+        clvp += 4;
+      }
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
+      if (prop_invar > 0)
+      {
+        freqs = frequencies[freqs_indices[i]];
+        inv_site_lk = (invar_indices[n] == -1) ?
+                          0 : freqs[invar_indices[n]];
+        terma += rate_weights[i] * (terma_r * (1 - prop_invar) +
+                 inv_site_lk * prop_invar);
+      }
+      else
+      {
+        terma += terma_r * rate_weights[i];
+      }
+
+      clvc += states_padded;
+      pmat -= displacement;
+    }
+    /* count number of scaling factors to acount for */
+    scale_factors = (parent_scaler) ? parent_scaler[pid] : 0;
+    scale_factors += (child_scaler) ? child_scaler[cid] : 0;
+
+    /* compute site log-likelihood and scale if necessary */
+    site_lk = log(terma) * pattern_weights[n];
+    if (scale_factors)
+      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = site_lk;
+
+    logl += site_lk;
+  }
+  return logl;
+}
+
 
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,

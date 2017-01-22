@@ -87,6 +87,10 @@
 #define PLL_ATTRIB_AB_MASK         (7 << 5)
 #define PLL_ATTRIB_AB_FLAG         (1 << 8)
 
+/* sites repeats */
+#define PLL_ATTRIB_SITES_REPEATS    (1 << 9)
+#define REPEATS_LOOKUP_SIZE 2000000 
+
 /* topological rearrangements */
 
 #define PLL_UTREE_MOVE_SPR                  1
@@ -134,6 +138,25 @@
 
 /* structures and data types */
 
+typedef struct pll_repeats
+{
+  /* (node,site) -> class identifier (starts at 1) */
+  unsigned int ** pernode_site_id; 
+  // (node,id) -> class site   
+  unsigned int ** pernode_id_site; 
+  // (node) -> max class identifier. 
+  unsigned int * pernode_max_id;
+  // (node) -> number of allocated clvs
+  unsigned int * pernode_allocated_clvs;
+
+  /* temporary buffers */ 
+  unsigned int * lookup_buffer;  
+  unsigned int * toclean_buffer; 
+  unsigned int * id_site_buffer; 
+
+  unsigned int lookup_buffer_size;
+} pll_repeats_t;
+
 typedef struct pll_partition
 {
   unsigned int tips;
@@ -178,6 +201,9 @@ typedef struct pll_partition
 
   /* ascertainment bias correction */
   int asc_bias_alloc;
+  
+  /* site repeats */
+  pll_repeats_t *repeats;
 } pll_partition_t;
 
 /* Structure for driving likelihood operations */
@@ -498,6 +524,40 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl);
 
+PLL_EXPORT double pll_core_root_loglikelihood_repeats(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * clv,
+                                              const unsigned int * site_id,
+                                              const unsigned int * scaler,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl,
+                                              unsigned int attrib);
+PLL_EXPORT
+double pll_core_edge_loglikelihood_repeats(unsigned int states,
+                                      unsigned int sites,
+                                      unsigned int rate_cats,
+                                      const double * parent_clv,
+                                      const unsigned int * parent_scaler,
+                                      const unsigned int * parent_site_id,
+                                      const double * child_clv,
+                                      const unsigned int * child_scaler,
+                                      const unsigned int * child_site_id,
+                                      const double * pmatrix,
+                                      double ** frequencies,
+                                      const double * rate_weights,
+                                      const unsigned int * pattern_weights,
+                                      const double * invar_proportion,
+                                      const int * invar_indices,
+                                      const unsigned int * freqs_indices,
+                                      double * persite_lnl,
+                                      unsigned int attrib);
+
 /* functions in partials.c */
 
 PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
@@ -711,6 +771,22 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int * parent_scaler,
                                            const double * left_clv,
                                            const double * right_clv,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler,
+                                           unsigned int attrib);
+
+PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
+                                           unsigned int identifiers,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           const unsigned int * parent_id_site,
+                                           unsigned int * parent_scaler,
+                                           double * left_clv,
+                                           const unsigned int * left_site_id,
+                                           double * right_clv,
+                                           const unsigned int * right_site_id,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
@@ -1042,6 +1118,21 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
                                                    const unsigned int * right_scaler);
+
+PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
+                                           unsigned int identifiers,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           const unsigned int * parent_id_site,
+                                           unsigned int * parent_scaler,
+                                           const double * left_clv,
+                                           const unsigned int * left_site_id,
+                                           const double * right_clv,
+                                           const unsigned int * right_site_id,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler);
 #endif
 
 /* functions in core_partials_avx2.c */
@@ -1325,6 +1416,57 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,
                                                          const int * invar_indices,
                                                          const unsigned int * freqs_indices,
                                                          double * persite_lnl);
+
+PLL_EXPORT double pll_core_root_loglikelihood_repeats_avx(unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_cats,
+                                                  const double * clv,
+                                                  const unsigned int * site_id,
+                                                  const unsigned int * scaler,
+                                                  double ** frequencies,
+                                                  const double * rate_weights,
+                                                  const unsigned int * pattern_weights,
+                                                  const double * invar_proportion,
+                                                  const int * invar_indices,
+                                                  const unsigned int * freqs_indices,
+                                                  double * persite_lnl);
+
+double pll_core_edge_loglikelihood_repeats_avx(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const unsigned int * parent_site_id,
+                                              const double * child_clv,
+                                              const unsigned int * child_scaler,
+                                              const unsigned int * child_site_id,
+                                              const double * pmatrix,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl);
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const unsigned int * parent_site_id,
+                                              const double * child_clv,
+                                              const unsigned int * child_scaler,
+                                              const unsigned int * child_site_id,
+                                              const double * pmatrix,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl);
+
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                                          unsigned int rate_cats,

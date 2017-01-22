@@ -449,6 +449,46 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
     }
   }
 }
+ 
+PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
+                                           unsigned int identifiers,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           const unsigned int * parent_id_site,
+                                           unsigned int * parent_scaler,
+                                           double * left_clv,
+                                           const unsigned int * left_site_id,
+                                           double * right_clv,
+                                           const unsigned int * right_site_id,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler,
+                                           unsigned int attrib)
+{
+#ifdef HAVE_AVX 
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    pll_core_update_partial_repeats_avx(states,
+                                        identifiers,
+                                        rate_cats,
+                                        parent_clv,
+                                        parent_id_site,
+                                        parent_scaler,
+                                        left_clv,
+                                        left_site_id,
+                                        right_clv,
+                                        right_site_id,
+                                        left_matrix,
+                                        right_matrix,
+                                        left_scaler,
+                                        right_scaler);
+    return;
+  }
+
+#endif
+}
+
 
 PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int sites,

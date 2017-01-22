@@ -105,6 +105,24 @@ static void dealloc_partition_data(pll_partition_t * partition)
   if (partition->pattern_weights)
     free(partition->pattern_weights);
 
+  if (partition->repeats) 
+  {
+    pll_repeats_t *repeats = partition->repeats;
+    unsigned int nodes_number = partition->clv_buffers+partition->tips;
+    for (i = 0; i < nodes_number; ++i) 
+    { 
+      free(repeats->pernode_site_id[i]);
+      free(repeats->pernode_id_site[i]);
+    }
+    free(repeats->pernode_site_id);
+    free(repeats->pernode_id_site);
+    free(repeats->pernode_max_id);
+    free(repeats->pernode_allocated_clvs);
+    free(repeats->lookup_buffer);
+    free(repeats->toclean_buffer);
+    free(repeats->id_site_buffer);
+    free(repeats);
+  }
   free(partition);
 }
 
@@ -411,6 +429,27 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
 
+  if ((attributes & PLL_ATTRIB_SITES_REPEATS) && !(attributes & PLL_ATTRIB_ARCH_AVX))
+  {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    snprintf(pll_errmsg, 200, "Repeats are can only be enabled with AVX arch flag.");
+    return PLL_FAILURE;
+  }
+  
+  if ((attributes & PLL_ATTRIB_SITES_REPEATS) && states != 4)
+  {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    snprintf(pll_errmsg, 200, "Repeats are not implemented for states != 4.");
+    return PLL_FAILURE;
+  }
+  
+  if ((attributes & PLL_ATTRIB_SITES_REPEATS) && (attributes & PLL_ATTRIB_PATTERN_TIP))
+  {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    snprintf(pll_errmsg, 200, "Repeats and tip pattern cannot be used together.");
+    return PLL_FAILURE;
+  }
+
   /* allocate partition */
   pll_partition_t * partition = (pll_partition_t *)malloc(sizeof(pll_partition_t));
   if (!partition)
@@ -480,6 +519,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->tipchars = NULL;
   partition->charmap = NULL;
   partition->tipmap = NULL;
+  
+  partition->repeats = NULL;
 
   /* If ascertainment bias correction attribute is set, CLVs will be allocated
      with additional sites for each state */
@@ -511,28 +552,32 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
 
-  /* if tip pattern precomputation is enabled, then do not allocate CLV space
-     for the tip nodes */
-  int start = (partition->attributes & PLL_ATTRIB_PATTERN_TIP) ?
-                  partition->tips : 0;
-
-  for (i = start; i < partition->tips + partition->clv_buffers; ++i)
+  /* if site repeats are enabled, we have to allocate clvs later */
+  if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
   {
-    partition->clv[i] = pll_aligned_alloc(sites_alloc * states_padded *
-                                          rate_cats * sizeof(double),
-                                          partition->alignment);
-    if (!partition->clv[i])
+    /* if tip pattern precomputation is enabled, then do not allocate CLV space
+       for the tip nodes */
+    int start = (partition->attributes & PLL_ATTRIB_PATTERN_TIP) ?
+                    partition->tips : 0;
+
+    for (i = start; i < partition->tips + partition->clv_buffers; ++i)
     {
-      dealloc_partition_data(partition);
-      pll_errno = PLL_ERROR_MEM_ALLOC;
-      snprintf(pll_errmsg, 200, "Unable to allocate enough memory for CLVs.");
-      return PLL_FAILURE;
+      partition->clv[i] = pll_aligned_alloc(sites_alloc * states_padded *
+                                            rate_cats * sizeof(double),
+                                            partition->alignment);
+      if (!partition->clv[i])
+      {
+        dealloc_partition_data(partition);
+        pll_errno = PLL_ERROR_MEM_ALLOC;
+        snprintf(pll_errmsg, 200, "Unable to allocate enough memory for CLVs.");
+        return PLL_FAILURE;
+      }
+      /* zero-out CLV vectors to avoid valgrind warnings when using odd number of
+         states with vectorized code */
+      memset(partition->clv[i],
+             0,
+             (size_t)sites_alloc*states_padded*rate_cats*sizeof(double));
     }
-    /* zero-out CLV vectors to avoid valgrind warnings when using odd number of
-       states with vectorized code */
-    memset(partition->clv[i],
-           0,
-           (size_t)sites_alloc*states_padded*rate_cats*sizeof(double));
   }
 
   /* pmatrix */
@@ -788,21 +833,84 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
              "Unable to allocate enough memory for scale buffers.");
     return PLL_FAILURE;
   }
-  for (i = 0; i < partition->scale_buffers; ++i)
+  /* scales will be allocated later if we use site repeats */
+  if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
   {
-    partition->scale_buffer[i] = (unsigned int *)calloc(sites_alloc,
-                                                        sizeof(unsigned int));
-    if (!partition->scale_buffer[i])
+    for (i = 0; i < partition->scale_buffers; ++i)
+    {
+      partition->scale_buffer[i] = (unsigned int *)calloc(sites_alloc,
+                                                          sizeof(unsigned int));
+      if (!partition->scale_buffer[i])
+      {
+        dealloc_partition_data(partition);
+        pll_errno = PLL_ERROR_MEM_ALLOC;
+        snprintf(pll_errmsg,
+                 200,
+                 "Unable to allocate enough memory for scale buffers.");
+        return PLL_FAILURE;
+      }
+    }
+  }
+  if (PLL_ATTRIB_SITES_REPEATS & partition->attributes) 
+  {
+    unsigned int nodes_number = partition->tips + partition->clv_buffers;
+    partition->repeats = malloc(sizeof(pll_repeats_t));
+    if (!partition->repeats) 
     {
       dealloc_partition_data(partition);
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg,
                200,
-               "Unable to allocate enough memory for scale buffers.");
+               "Unable to allocate enough memory for repeats structure.");
+      return PLL_FAILURE;
+    }
+    memset(partition->repeats, 0, sizeof(pll_repeats_t));
+    pll_repeats_t *repeats = partition->repeats;
+    repeats->pernode_site_id = calloc(nodes_number, sizeof(unsigned int*));
+    repeats->pernode_id_site = calloc(nodes_number, sizeof(unsigned int*));
+    if (!repeats->pernode_site_id || !repeats->pernode_id_site) 
+    {
+      dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for repeats identifiers.");
+      return PLL_FAILURE;
+    }
+    for (i = 0; i < nodes_number; ++i) 
+    {
+      repeats->pernode_site_id[i] = calloc(partition->sites, 
+                                           sizeof(unsigned int));
+      if (!repeats->pernode_site_id[i]) 
+      {
+        dealloc_partition_data(partition);
+        pll_errno = PLL_ERROR_MEM_ALLOC;
+        snprintf(pll_errmsg,
+                 200,
+                 "Unable to allocate enough memory for repeats identifiers.");
+        return PLL_FAILURE;
+      }
+    }
+    repeats->lookup_buffer_size = REPEATS_LOOKUP_SIZE;
+    repeats->pernode_max_id = calloc(nodes_number, sizeof(unsigned int));
+    repeats->pernode_allocated_clvs = 
+      calloc(nodes_number, sizeof(unsigned int));
+    repeats->lookup_buffer = 
+      calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
+    repeats->toclean_buffer = malloc(partition->sites * sizeof(unsigned int));
+    repeats->id_site_buffer = malloc(partition->sites * sizeof(unsigned int));
+    if (!(repeats->pernode_max_id && repeats->lookup_buffer
+         && repeats->pernode_allocated_clvs
+         && repeats->toclean_buffer && repeats->id_site_buffer)) 
+    {
+      dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+            200,
+            "Unable to allocate enough memory for one of the repeats buffer.");
       return PLL_FAILURE;
     }
   }
-
   return partition;
 }
 
@@ -892,16 +1000,21 @@ static int set_tipclv(pll_partition_t * partition,
   unsigned int i,j;
   double * tipclv = partition->clv[tip_index];
 
+  pll_repeats_t * repeats = partition->repeats;
+  unsigned int userepeats = (NULL != repeats);
   /* iterate through sites */
-  for (i = 0; i < partition->sites; ++i)
+  unsigned int max = userepeats ?  
+                    repeats->pernode_max_id[tip_index] : partition->sites;
+  for (i = 0; i < max; ++i)
   {
-    if ((c = map[(int)sequence[i]]) == 0)
+    unsigned int index = userepeats ? 
+                    repeats->pernode_id_site[tip_index][i] : i;
+    if ((c = map[(int)sequence[index]]) == 0)
     {
       pll_errno = PLL_ERROR_TIPDATA_ILLEGALSTATE;
-      snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
+      snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[index]);
       return PLL_FAILURE;
     }
-
     /* decompose basecall into the encoded residues and set the appropriate
        positions in the tip vector */
     for (j = 0; j < partition->states; ++j)
@@ -944,13 +1057,76 @@ static int set_tipclv(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
+static int update_repeats_tips(pll_partition_t * partition,
+                                  unsigned int tip_index,
+                                  const unsigned int * map,
+                                  const char * sequence)
+{
+  unsigned int s;
+  pll_repeats_t * repeats = partition->repeats;
+  unsigned int ** id_site = repeats->pernode_id_site;
+  unsigned int additional_sites = 
+    partition->asc_bias_alloc ? partition->states : 0;
+
+  repeats->pernode_max_id[tip_index] = 0;
+  unsigned int curr_id = 0;
+  for (s = 0; s < partition->sites; ++s) 
+  {
+    unsigned int index_lookup = map[(int)sequence[s]] + 1;
+    if (!repeats->lookup_buffer[index_lookup]) 
+    {
+      repeats->toclean_buffer[curr_id] = index_lookup;
+      repeats->id_site_buffer[curr_id] = s;
+      repeats->lookup_buffer[index_lookup] = ++curr_id;
+    }
+    repeats->pernode_site_id[tip_index][s] = repeats->lookup_buffer[index_lookup];
+  }
+  repeats->pernode_max_id[tip_index] = curr_id;
+  free(id_site[tip_index]);
+  id_site[tip_index] = malloc(sizeof(unsigned int) 
+      * (curr_id + additional_sites));
+  for (s = 0; s < curr_id; ++s) 
+  {
+    id_site[tip_index][s] = repeats->id_site_buffer[s];
+    repeats->lookup_buffer[repeats->toclean_buffer[s]] = 0;
+  }
+  for (s = 0; s < additional_sites; ++s) 
+  {
+    id_site[tip_index][curr_id + s] = partition->sites + s;
+  }
+  unsigned int sizealloc = (curr_id + additional_sites) * partition->states_padded * 
+                          partition->rate_cats * sizeof(double);
+  free(partition->clv[tip_index]); 
+  
+  partition->clv[tip_index] = pll_aligned_alloc(sizealloc,
+                                        partition->alignment);
+  if (!partition->clv[tip_index]) 
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for repeats structure.");
+    return PLL_FAILURE;
+  }
+  /* zero-out CLV vectors to avoid valgrind warnings when using odd number of
+       states with vectorized code */
+  memset(partition->clv[tip_index],
+          0,
+          sizealloc);
+  return PLL_SUCCESS;
+}
+
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
                                   unsigned int tip_index,
                                   const unsigned int * map,
                                   const char * sequence)
 {
   int rc;
-
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) 
+  {
+    if (PLL_FAILURE == update_repeats_tips(partition, tip_index, map, sequence)) 
+      return PLL_FAILURE;
+  }
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
     /* create (or update) character map for tip-tip precomputations */

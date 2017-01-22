@@ -612,8 +612,12 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     unsigned int span_padded = rate_cats * states_padded;
     for (i = 0; i < tips; ++i)
     {
+      unsigned int identifiers = 
+        (partition->repeats && partition->repeats->pernode_max_id[i]) 
+        ? partition->repeats->pernode_max_id[i] 
+        : sites;
       tipclv = partition->clv[i];
-      for (j = 0; j < sites; ++j)
+      for (j = 0; j < identifiers; ++j)
       {
         state = 0;
         for (k = 0; k < states; ++k)

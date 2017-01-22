@@ -11,7 +11,12 @@ unsigned int get_attributes(int argc, char **argv)
 
   for (i=1; i<argc; ++i)
   {
-    if (!strcmp (argv[i], "tv"))
+    if (!strcmp (argv[i], "sr"))
+    {
+      /* site repeats */
+      attributes |= PLL_ATTRIB_SITES_REPEATS;
+    }
+    else if (!strcmp (argv[i], "tv"))
     {
       /* tipvector */
       attributes |= PLL_ATTRIB_PATTERN_TIP;

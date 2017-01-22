@@ -205,6 +205,42 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   return logl;
 }
 
+PLL_EXPORT double pll_core_root_loglikelihood_repeats(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * clv,
+                                              const unsigned int * site_id,
+                                              const unsigned int * scaler,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl,
+                                              unsigned int attrib)
+{
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX) // todo implement states==4
+  {
+    return pll_core_root_loglikelihood_repeats_avx(states,
+                                            sites,
+                                            rate_cats,
+                                            clv,
+                                            site_id,
+                                            scaler,
+                                            frequencies,
+                                            rate_weights,
+                                            pattern_weights,
+                                            invar_proportion,
+                                            invar_indices,
+                                            freqs_indices,
+                                            persite_lnl);
+  }
+#endif
+  return 0.0;
+}
+
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                           unsigned int rate_cats,
@@ -608,6 +644,72 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   return logl;
 }
 
+PLL_EXPORT
+double pll_core_edge_loglikelihood_repeats(unsigned int states,
+                                      unsigned int sites,
+                                      unsigned int rate_cats,
+                                      const double * parent_clv,
+                                      const unsigned int * parent_scaler,
+                                      const unsigned int * parent_site_id,
+                                      const double * child_clv,
+                                      const unsigned int * child_scaler,
+                                      const unsigned int * child_site_id,
+                                      const double * pmatrix,
+                                      double ** frequencies,
+                                      const double * rate_weights,
+                                      const unsigned int * pattern_weights,
+                                      const double * invar_proportion,
+                                      const int * invar_indices,
+                                      const unsigned int * freqs_indices,
+                                      double * persite_lnl,
+                                      unsigned int attrib)
+{
+  #ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    if (states == 4)
+    {
+      return pll_core_edge_loglikelihood_repeats_4x4_avx(sites,
+                                                    rate_cats,
+                                                    parent_clv,
+                                                    parent_scaler,
+                                                    parent_site_id,
+                                                    child_clv,
+                                                    child_scaler,
+                                                    child_site_id,
+                                                    pmatrix,
+                                                    frequencies,
+                                                    rate_weights,
+                                                    pattern_weights,
+                                                    invar_proportion,
+                                                    invar_indices,
+                                                    freqs_indices,
+                                                    persite_lnl);
+    }
+    return pll_core_edge_loglikelihood_repeats_avx(states,
+                                                  sites,
+                                                  rate_cats,
+                                                  parent_clv,
+                                                  parent_scaler,
+                                                  parent_site_id,
+                                                  child_clv,
+                                                  child_scaler,
+                                                  child_site_id,
+                                                  pmatrix,
+                                                  frequencies,
+                                                  rate_weights,
+                                                  pattern_weights,
+                                                  invar_proportion,
+                                                  invar_indices,
+                                                  freqs_indices,
+                                                  persite_lnl);
+    
+  }
+#endif
+  return 0.0;
+}
+  
+  
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       unsigned int sites,

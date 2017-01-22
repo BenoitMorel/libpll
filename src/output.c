@@ -68,6 +68,12 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
   unsigned int rates = partition->rate_cats;
   double prob;
 
+  unsigned int * site_id = NULL;
+
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS
+      && partition->repeats->pernode_max_id[clv_index])
+    site_id = partition->repeats->pernode_site_id[clv_index];
+
   if ((clv_index < partition->tips) &&
       (partition->attributes & PLL_ATTRIB_PATTERN_TIP))
     return;
@@ -75,18 +81,19 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
   printf ("[ ");
   for (i = 0; i < partition->sites; ++i)
   {
+    unsigned int id = site_id ? site_id[i] - 1 : i;
     printf("{");
     for (j = 0; j < rates; ++j)
     {
       printf("(");
       for (k = 0; k < states-1; ++k)
       {
-        prob = clv[i*rates*states_padded + j*states_padded + k];
-        if (scaler) unscale(&prob, scaler[i]);
+        prob = clv[id*rates*states_padded + j*states_padded + k];
+        if (scaler) unscale(&prob, scaler[id]);
         printf("%.*f,", float_precision, prob);
       }
-      prob = clv[i*rates*states_padded + j*states_padded + k];
-      if (scaler) unscale(&prob, scaler[i]);
+      prob = clv[id*rates*states_padded + j*states_padded + k];
+      if (scaler) unscale(&prob, scaler[id]);
       printf("%.*f)", float_precision, prob);
       if (j < rates - 1) printf(",");
     }
