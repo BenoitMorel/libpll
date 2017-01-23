@@ -245,7 +245,7 @@ static void reallocate_repeats(pll_partition_t * partition,
 
 
 /* Fill the repeat structure in partition for the parent node of op */
-static void update_repeats(pll_partition_t * partition,
+PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
                     const pll_operation_t * op) 
 {
   pll_repeats_t * repeats = partition->repeats;
@@ -272,7 +272,7 @@ static void update_repeats(pll_partition_t * partition,
   else
   {
     // fill the parent repeats identifiers
-    for (s = 0; s < partition->sites; ++s) 
+    for (s = 0; s < partition->sites + additional_sites; ++s) 
     {
       unsigned int index_lookup = (site_ids[left][s] - 1) 
         + (site_ids[right][s] - 1) * repeats->pernode_max_id[left];
@@ -316,7 +316,7 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
     op = &(operations[i]);
 
     if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) 
-      update_repeats(partition, op);
+      pll_update_repeats(partition, op);
 
     if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
     {

@@ -277,7 +277,40 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
   else
     child_scaler = partition->scale_buffer[child_scaler_index];
 
-  int retval = pll_core_likelihood_derivatives(partition->states,
+  int retval;
+
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) {
+    // TODO this should fail is parent_clv_index != parent_scaler_index
+    unsigned int parent_max_id = partition->repeats->pernode_max_id[parent_scaler_index];
+    parent_max_id = parent_max_id ? parent_max_id : partition->sites;
+    // TODO this should fail is child_clv_index != child_scaler_index
+    unsigned int child_max_id = partition->repeats->pernode_max_id[child_scaler_index];
+    child_max_id = child_max_id ? child_max_id : partition->sites;
+    
+    retval = pll_core_likelihood_derivatives_repeats(partition->states,
+                                               partition->sites,
+                                               partition->rate_cats,
+                                               partition->rate_weights,
+                                               parent_scaler,
+                                               parent_max_id,
+                                               child_scaler,
+                                               child_max_id,
+                                               partition->invariant,
+                                               partition->pattern_weights,
+                                               branch_length,
+                                               prop_invar,
+                                               freqs,
+                                               partition->rates,
+                                               eigenvals,
+                                               sumtable,
+                                               d_f,
+                                               dd_f,
+                                               partition->attributes);
+
+  }
+  else
+  {
+    retval = pll_core_likelihood_derivatives(partition->states,
                                                partition->sites,
                                                partition->rate_cats,
                                                partition->rate_weights,
@@ -294,6 +327,7 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                d_f,
                                                dd_f,
                                                partition->attributes);
+  }
 
   free (freqs);
   free (prop_invar);

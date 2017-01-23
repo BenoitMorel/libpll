@@ -872,7 +872,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     }
     for (i = 0; i < nodes_number; ++i) 
     {
-      repeats->pernode_site_id[i] = calloc(partition->sites, 
+      repeats->pernode_site_id[i] = calloc(sites_alloc, 
                                            sizeof(unsigned int));
       if (!repeats->pernode_site_id[i]) 
       {
@@ -890,8 +890,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       calloc(nodes_number, sizeof(unsigned int));
     repeats->lookup_buffer = 
       calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
-    repeats->toclean_buffer = malloc(partition->sites * sizeof(unsigned int));
-    repeats->id_site_buffer = malloc(partition->sites * sizeof(unsigned int));
+    repeats->toclean_buffer = malloc(sites_alloc * sizeof(unsigned int));
+    repeats->id_site_buffer = malloc(sites_alloc * sizeof(unsigned int));
     if (!(repeats->pernode_max_id && repeats->lookup_buffer
          && repeats->pernode_allocated_clvs
          && repeats->toclean_buffer && repeats->id_site_buffer)) 
@@ -1086,6 +1086,7 @@ static int update_repeats_tips(pll_partition_t * partition,
   for (s = 0; s < additional_sites; ++s) 
   {
     id_site[tip_index][curr_id + s] = partition->sites + s;
+    repeats->pernode_site_id[tip_index][partition->sites + s] = curr_id + 1 + s;
   }
   unsigned int sizealloc = (curr_id + additional_sites) * partition->states_padded * 
                           partition->rate_cats * sizeof(double);

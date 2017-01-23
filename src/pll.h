@@ -564,6 +564,17 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
                                     unsigned int count);
 
+PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
+                    const pll_operation_t * op); 
+
+PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
+                    const pll_operation_t * op); 
+
+PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
+                    const pll_operation_t * op); 
+
+PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
+                    const pll_operation_t * op); 
 
 /* functions in derivatives.c */
 
@@ -873,6 +884,26 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                const double * rate_weights,
                                                const unsigned int * parent_scaler,
                                                const unsigned int * child_scaler,
+                                               const int * invariant,
+                                               const unsigned int * pattern_weights,
+                                               double branch_length,
+                                               const double * prop_invar,
+                                               double ** freqs,
+                                               const double * rates,
+                                               double ** eigenvals,
+                                               const double * sumtable,
+                                               double * d_f,
+                                               double * dd_f,
+                                               unsigned int attrib);
+
+PLL_EXPORT int pll_core_likelihood_derivatives_repeats(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               const double * rate_weights,
+                                               const unsigned int * parent_scaler,
+                                               unsigned int parent_max_id,
+                                               const unsigned int * child_scaler,
+                                               unsigned int child_max_id,
                                                const int * invariant,
                                                const unsigned int * pattern_weights,
                                                double branch_length,

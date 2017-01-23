@@ -609,3 +609,237 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
   return PLL_SUCCESS;
 }
+
+PLL_EXPORT int pll_core_likelihood_derivatives_repeats(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               const double * rate_weights,
+                                               const unsigned int * parent_scaler,
+                                               unsigned int parent_max_id,
+                                               const unsigned int * child_scaler,
+                                               unsigned int child_max_id,
+                                               const int * invariant,
+                                               const unsigned int * pattern_weights,
+                                               double branch_length,
+                                               const double * prop_invar,
+                                               double ** freqs,
+                                               const double * rates,
+                                               double ** eigenvals,
+                                               const double * sumtable,
+                                               double * d_f,
+                                               double * dd_f,
+                                               unsigned int attrib)
+{
+  unsigned int n, i, j;
+  unsigned int ef_sites;
+
+  const double * sum;
+  double deriv1, deriv2;
+  double site_lk[3];
+
+  const double * t_eigenvals;
+  double t_branch_length;
+  unsigned int scale_factors;
+
+  double *diagptable, *diagp;
+  const int * invariant_ptr;
+  double ki;
+
+  unsigned int states_padded = states;
+
+  /* For Stamatakis correction, the likelihood derivatives are computed in
+     the usual way for the additional per-state sites. */
+  if ((attrib & PLL_ATTRIB_AB_MASK) == PLL_ATTRIB_AB_STAMATAKIS)
+  {
+    ef_sites = sites + states;
+  }
+  else
+  {
+    ef_sites = sites;
+  }
+
+  *d_f = 0.0;
+  *dd_f = 0.0;
+
+  diagptable = (double *) pll_aligned_alloc(
+                                      rate_cats * states * 4 * sizeof(double),
+                                      PLL_ALIGNMENT_AVX);
+  if (!diagptable)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
+    return PLL_FAILURE;
+  }
+
+  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
+  diagp = diagptable;
+  for(i = 0; i < rate_cats; ++i)
+  {
+    t_eigenvals = eigenvals[i];
+    ki = rates[i]/(1.0 - prop_invar[i]);
+    t_branch_length = branch_length;
+    for(j = 0; j < states; ++j)
+    {
+      diagp[0] = exp(t_eigenvals[j] * ki * t_branch_length);
+      diagp[1] = t_eigenvals[j] * ki * diagp[0];
+      diagp[2] = t_eigenvals[j] * ki * t_eigenvals[j] * ki * diagp[0];
+      diagp[3] = 0;
+      diagp += 4;
+    }
+  }
+
+// SSE3 vectorization in missing as of now
+#ifdef HAVE_SSE3
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    states_padded = (states+1) & 0xFFFFFFFE;
+  }
+#endif
+
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    states_padded = (states+3) & 0xFFFFFFFC;
+
+    pll_core_likelihood_derivatives_avx2(states,
+                                        states_padded,
+                                        rate_cats,
+                                        ef_sites,
+                                        pattern_weights,
+                                        rate_weights,
+                                        invariant,
+                                        prop_invar,
+                                        freqs,
+                                        sumtable,
+                                        diagptable,
+                                        d_f,
+                                        dd_f);
+  }
+  else
+#endif
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    states_padded = (states+3) & 0xFFFFFFFC;
+
+    pll_core_likelihood_derivatives_avx(states,
+                                        states_padded,
+                                        rate_cats,
+                                        ef_sites,
+                                        pattern_weights,
+                                        rate_weights,
+                                        invariant,
+                                        prop_invar,
+                                        freqs,
+                                        sumtable,
+                                        diagptable,
+                                        d_f,
+                                        dd_f);
+  }
+  else
+#endif
+  {
+    sum = sumtable;
+    invariant_ptr = invariant;
+    for (n = 0; n < ef_sites; ++n)
+    {
+      core_site_likelihood_derivatives(states,
+                                     states_padded,
+                                     rate_cats,
+                                     rate_weights,
+                                     invariant_ptr,
+                                     prop_invar,
+                                     freqs,
+                                     sum,
+                                     diagptable,
+                                     site_lk);
+
+      invariant_ptr++;
+      sum += rate_cats * states_padded;
+
+      /* build derivatives */
+      deriv1 = (-site_lk[1] / site_lk[0]);
+      deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
+      *d_f += pattern_weights[n] * deriv1;
+      *dd_f += pattern_weights[n] * deriv2;
+    }
+  }
+
+  /* account for ascertainment bias correction */
+  if (attrib & PLL_ATTRIB_AB_MASK)
+  {
+    double asc_Lk[3] = {0.0, 0.0, 0.0};
+    unsigned int sum_w_inv = 0;
+    double asc_scaling;
+    int asc_bias_type = attrib & PLL_ATTRIB_AB_MASK;
+
+    if (asc_bias_type != PLL_ATTRIB_AB_STAMATAKIS)
+    {
+      /* check that no additional sites have been evaluated */
+      assert(ef_sites == sites);
+
+      sum = sumtable + sites * rate_cats * states_padded;
+      for (n=0; n<states; ++n)
+      {
+        /* compute the site LK derivatives for the additional per-state sites */
+        core_site_likelihood_derivatives(states,
+                                         states_padded,
+                                         rate_cats,
+                                         rate_weights,
+                                         0, /* prop invar disallowed */
+                                         prop_invar,
+                                         freqs,
+                                         sum,
+                                         diagptable,
+                                         site_lk);
+        sum += rate_cats * states_padded;
+
+        /* apply scaling */
+        scale_factors = (parent_scaler) ? parent_scaler[parent_max_id + n] : 0;
+        scale_factors += (child_scaler) ? child_scaler[child_max_id + n] : 0;
+        asc_scaling = pow(PLL_SCALE_THRESHOLD, (double)scale_factors);
+
+        /* sum over likelihood and 1st and 2nd derivative / apply scaling */
+        asc_Lk[0] += site_lk[0] * asc_scaling;
+        asc_Lk[1] += site_lk[1] * asc_scaling;
+        asc_Lk[2] += site_lk[2] * asc_scaling;
+
+        sum_w_inv += pattern_weights[sites + n];
+      }
+
+      switch(asc_bias_type)
+      {
+        case PLL_ATTRIB_AB_LEWIS:
+        {
+          // TODO: pattern_weight_sum should be stored somewhere!
+          unsigned int pattern_weight_sum = 0;
+          for (n = 0; n < ef_sites; ++n)
+            pattern_weight_sum += pattern_weights[n];
+
+          /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
+          *d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
+          *dd_f -= pattern_weight_sum *
+               (((asc_Lk[0] - 1.0) * asc_Lk[2] - asc_Lk[1] * asc_Lk[1]) /
+               ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
+        }
+        break;
+        case PLL_ATTRIB_AB_FELSENSTEIN:
+          /* derivatives of log(sum Li(s) over states 's') */
+          *d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
+          *dd_f += sum_w_inv *
+               (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
+               (asc_Lk[0] * asc_Lk[0]));
+        break;
+        default:
+          pll_errno = PLL_ERROR_AB_INVALIDMETHOD;
+          snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm");
+          return PLL_FAILURE;
+      }
+    }
+  }
+
+  pll_aligned_free (diagptable);
+
+  return PLL_SUCCESS;
+}
+
