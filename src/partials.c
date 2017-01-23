@@ -253,6 +253,10 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   unsigned int right = op->child2_clv_index;
   unsigned int parent = op->parent_clv_index;
   unsigned int ** site_ids = repeats->pernode_site_id;
+  unsigned int * site_id_parent = site_ids[parent];
+  const unsigned int * site_id_left = site_ids[left];
+  const unsigned int * site_id_right = site_ids[right];
+  const unsigned int max_id_left = repeats->pernode_max_id[left];
   unsigned int ** id_site = repeats->pernode_id_site;
   unsigned int * toclean_buffer = repeats->toclean_buffer;
   unsigned int * id_site_buffer = repeats->id_site_buffer;
@@ -274,15 +278,17 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
     // fill the parent repeats identifiers
     for (s = 0; s < partition->sites + additional_sites; ++s) 
     {
-      unsigned int index_lookup = (site_ids[left][s] - 1) 
-        + (site_ids[right][s] - 1) * repeats->pernode_max_id[left];
-      if (!repeats->lookup_buffer[index_lookup]) 
+      unsigned int index_lookup = site_id_left[s]
+        + site_id_right[s] * max_id_left;
+      unsigned int id = repeats->lookup_buffer[index_lookup];
+      if (!id) 
       {
         toclean_buffer[curr_id] = index_lookup;
         id_site_buffer[curr_id] = s;
         repeats->lookup_buffer[index_lookup] = ++curr_id;
+        id = curr_id;
       }
-      site_ids[parent][s] = repeats->lookup_buffer[index_lookup];
+      site_id_parent[s] = id;
     }
     repeats->pernode_max_id[parent] = curr_id;
     sites_to_alloc = curr_id + additional_sites;

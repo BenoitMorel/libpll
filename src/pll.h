@@ -567,15 +567,6 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
 PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
                     const pll_operation_t * op); 
 
-PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
-                    const pll_operation_t * op); 
-
-PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
-                    const pll_operation_t * op); 
-
-PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
-                    const pll_operation_t * op); 
-
 /* functions in derivatives.c */
 
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
