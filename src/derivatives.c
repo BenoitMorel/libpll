@@ -281,10 +281,14 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
 
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) {
     // TODO this should fail is parent_clv_index != parent_scaler_index
-    unsigned int parent_max_id = partition->repeats->pernode_max_id[parent_scaler_index];
+    unsigned int parent_max_id = parent_scaler_index != PLL_SCALE_BUFFER_NONE 
+      ? partition->repeats->perscale_max_id[parent_scaler_index]
+      : 0;
     parent_max_id = parent_max_id ? parent_max_id : partition->sites;
     // TODO this should fail is child_clv_index != child_scaler_index
-    unsigned int child_max_id = partition->repeats->pernode_max_id[child_scaler_index];
+    unsigned int child_max_id = child_scaler_index != PLL_SCALE_BUFFER_NONE 
+      ? partition->repeats->perscale_max_id[child_scaler_index]
+      : 0;
     child_max_id = child_max_id ? child_max_id : partition->sites;
     
     retval = pll_core_likelihood_derivatives_repeats(partition->states,

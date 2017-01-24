@@ -48,7 +48,7 @@ static double compute_asc_bias_correction(double logl_base,
 }
 
 static double root_loglikelihood_asc_bias(pll_partition_t * partition,
-                                          const double * clv,
+              TODO                            const double * clv,
                                           unsigned int * scaler,
                                           const unsigned int * freqs_indices)
 {
@@ -331,8 +331,10 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
 static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
                                              const double * clvp,
                                              unsigned int * parent_scaler,
+                                             unsigned int parent_sites,
                                              const double * clvc,
                                              unsigned int * child_scaler,
+                                             unsigned int child_sites,
                                              unsigned int matrix_index,
                                              const unsigned int * freqs_indices)
 {
@@ -350,15 +352,18 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
   double * rate_weights = partition->rate_weights;
 
   /* point clv, clvc, scalers and pattern weights to state sites */
-  unsigned int offset = partition->sites * 
+  unsigned int parent_offset = parent_sites * 
+                        partition->rate_cats *
+                        partition->states_padded;
+  unsigned int child_offset = child_sites * 
                         partition->rate_cats *
                         partition->states_padded;
 
   pattern_weights += partition->sites;
-  clvp += offset;
-  clvc += offset;
-  parent_scaler += partition->sites;
-  child_scaler += partition->sites;
+  clvp += parent_offset;
+  clvc += child_offset;
+  parent_scaler += parent_sites;
+  child_scaler += child_sites;
 
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
@@ -476,6 +481,28 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
                                         persite_lnl,
                                         partition->attributes);
 
+  /* ascertainment bias correction */
+  if (partition->attributes & PLL_ATTRIB_AB_MASK)
+  {
+    /* Note the assertion must be done for all rate matrices
+    assert(prop_invar == 0);
+    */
+    unsigned int parent_sites = partition->repeats->pernode_max_id[parent_clv_index]
+      ? partition->repeats->pernode_max_id[parent_clv_index]
+      : partition->sites;
+    unsigned int child_sites = partition->repeats->pernode_max_id[child_clv_index]
+      ? partition->repeats->pernode_max_id[child_clv_index]
+      : partition->sites;
+    logl += edge_loglikelihood_asc_bias_ii(partition,
+                                           clvp,
+                                           parent_scaler,
+                                           parent_sites,
+                                           clvc,
+                                           child_scaler,
+                                           child_sites,
+                                           matrix_index,
+                                           freqs_indices);
+  }
   return logl;
 }
 
@@ -533,8 +560,10 @@ static double edge_loglikelihood(pll_partition_t * partition,
     logl += edge_loglikelihood_asc_bias_ii(partition,
                                            clvp,
                                            parent_scaler,
+                                           partition->sites,
                                            clvc,
                                            child_scaler,
+                                           partition->sites,
                                            matrix_index,
                                            freqs_indices);
   }

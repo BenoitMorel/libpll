@@ -117,6 +117,7 @@ static void dealloc_partition_data(pll_partition_t * partition)
     free(repeats->pernode_site_id);
     free(repeats->pernode_id_site);
     free(repeats->pernode_max_id);
+    free(repeats->perscale_max_id);
     free(repeats->pernode_allocated_clvs);
     free(repeats->lookup_buffer);
     free(repeats->toclean_buffer);
@@ -886,6 +887,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     }
     repeats->lookup_buffer_size = REPEATS_LOOKUP_SIZE;
     repeats->pernode_max_id = calloc(nodes_number, sizeof(unsigned int));
+    repeats->perscale_max_id = calloc(partition->scale_buffers, sizeof(unsigned int));
     repeats->pernode_allocated_clvs = 
       calloc(nodes_number, sizeof(unsigned int));
     repeats->lookup_buffer = 

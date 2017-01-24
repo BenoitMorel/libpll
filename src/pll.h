@@ -146,6 +146,8 @@ typedef struct pll_repeats
   unsigned int ** pernode_id_site; 
   // (node) -> max class identifier. 
   unsigned int * pernode_max_id;
+  // (node) -> max class identifier. 
+  unsigned int * perscale_max_id;
   // (node) -> number of allocated clvs
   unsigned int * pernode_allocated_clvs;
 

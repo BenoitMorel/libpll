@@ -174,6 +174,8 @@ static void case_innerinner(pll_partition_t * partition,
       left_site_id = partition->repeats->pernode_site_id[op->child1_clv_index];
     if (partition->repeats->pernode_max_id[op->child2_clv_index])
       right_site_id = partition->repeats->pernode_site_id[op->child2_clv_index];
+    if (partition->asc_bias_alloc)
+      identifiers += partition->states;
     
     pll_core_update_partial_repeats(partition->states,
                                     identifiers,
@@ -272,11 +274,13 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   {
     sites_to_alloc = partition->sites + additional_sites;
     repeats->pernode_max_id[parent] = 0;
+    if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
+      repeats->perscale_max_id[op->parent_scaler_index] = 0;
   } 
   else
   {
     // fill the parent repeats identifiers
-    for (s = 0; s < partition->sites + additional_sites; ++s) 
+    for (s = 0; s < partition->sites; ++s) 
     {
       unsigned int index_lookup = site_id_left[s]
         + site_id_right[s] * max_id_left;
@@ -290,7 +294,13 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
       }
       site_id_parent[s] = id;
     }
+    for (s = 0; s < additional_sites; ++s) 
+    {
+      site_id_parent[s + partition->sites] = curr_id + s + 1;
+    }
     repeats->pernode_max_id[parent] = curr_id;
+    if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
+      repeats->perscale_max_id[op->parent_scaler_index] = curr_id;
     sites_to_alloc = curr_id + additional_sites;
   }
   
