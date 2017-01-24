@@ -167,6 +167,8 @@ static void case_innerinner(pll_partition_t * partition,
     const unsigned int * parent_id_site = 0x0;
     const unsigned int * left_site_id = 0x0;
     const unsigned int * right_site_id = 0x0;
+    unsigned int left_sites = partition->repeats->pernode_max_id[op->child1_clv_index];
+    unsigned int right_sites = partition->repeats->pernode_max_id[op->child2_clv_index];
     identifiers = identifiers ? identifiers : partition->sites;
     if (partition->repeats->pernode_max_id[op->parent_clv_index])
       parent_id_site = partition->repeats->pernode_id_site[op->parent_clv_index];
@@ -176,8 +178,46 @@ static void case_innerinner(pll_partition_t * partition,
       right_site_id = partition->repeats->pernode_site_id[op->child2_clv_index];
     if (partition->asc_bias_alloc)
       identifiers += partition->states;
-    
-    pll_core_update_partial_repeats(partition->states,
+    left_sites = left_sites ? left_sites : partition->sites;
+    right_sites = right_sites ? right_sites : partition->sites;
+
+    if (left_sites < 100 && right_sites == partition->sites) 
+    {
+      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+                                    partition->rate_cats,
+                                    parent_clv,
+                                    parent_id_site,
+                                    parent_scaler,
+                                    left_clv,
+                                    left_site_id,
+                                    partition->repeats->pernode_max_id[op->child1_clv_index],
+                                    right_clv,
+                                    right_site_id, 
+                                    left_matrix,
+                                    right_matrix,
+                                    left_scaler,
+                                    right_scaler);
+    } 
+    else if (right_sites < 100 && left_sites == partition->sites) 
+    {
+      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+                                    partition->rate_cats,
+                                    parent_clv,
+                                    parent_id_site,
+                                    parent_scaler,
+                                    right_clv,
+                                    right_site_id,
+                                    partition->repeats->pernode_max_id[op->child2_clv_index],
+                                    left_clv,
+                                    left_site_id, 
+                                    right_matrix,
+                                    left_matrix,
+                                    right_scaler,
+                                    left_scaler);
+    } 
+    else
+    {
+      pll_core_update_partial_repeats(partition->states,
                                     identifiers,
                                     partition->rate_cats,
                                     parent_clv,
@@ -192,6 +232,7 @@ static void case_innerinner(pll_partition_t * partition,
                                     left_scaler,
                                     right_scaler,
                                     partition->attributes);
+    }
     return; 
   }
 

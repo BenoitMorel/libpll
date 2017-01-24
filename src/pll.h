@@ -1170,6 +1170,20 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler);
+PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifiers,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           const unsigned int * parent_id_site,
+                                           unsigned int * parent_scaler,
+                                           const double * left_clv,
+                                           const unsigned int * left_site_id,
+                                           unsigned int left_sites,
+                                           const double * right_clv,
+                                           const unsigned int * right_site_id,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler);
 #endif
 
 /* functions in core_partials_avx2.c */
