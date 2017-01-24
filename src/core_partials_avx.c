@@ -466,6 +466,8 @@ static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
   if (parent_scaler)
     fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
+  
+  __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
 
   for (n = 0; n < identifiers; ++n)
   {
@@ -476,7 +478,7 @@ static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
     const double *rclv = &right_clv[rid * span];
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = (parent_scaler) ? 1 : 0;
+    scaling = (parent_scaler) ? 0xF : 0;
 
     for (k = 0; k < rate_cats; ++k)
     {
@@ -552,8 +554,8 @@ static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
 
       _mm256_store_pd(parent_clv, xmm0);
 
-      for (i = 0; i < states; ++i)
-        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
+      __m256d v_cmp = _mm256_cmp_pd(xmm0, v_scale_threshold, _CMP_LT_OS);
+      scaling = scaling & _mm256_movemask_pd(v_cmp);
 
       parent_clv += states;
       lclv  += states;
@@ -562,12 +564,9 @@ static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
 
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
+    if (scaling == 0xF)
     {
-      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR);
+      __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
 
       parent_clv -= span;
       for (i = 0; i < span; i += 4)
