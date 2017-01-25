@@ -155,7 +155,7 @@ typedef struct pll_repeats
   unsigned int * lookup_buffer;  
   unsigned int * toclean_buffer; 
   unsigned int * id_site_buffer; 
-
+  double * bclv_buffer;
   unsigned int lookup_buffer_size;
 } pll_repeats_t;
 
@@ -1183,7 +1183,8 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
-                                           const unsigned int * right_scaler);
+                                           const unsigned int * right_scaler,
+                                           double * bclv_buffer);
 #endif
 
 /* functions in core_partials_avx2.c */

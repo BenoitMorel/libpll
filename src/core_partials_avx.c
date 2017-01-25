@@ -450,7 +450,8 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
-                                           const unsigned int * right_scaler)
+                                           const unsigned int * right_scaler,
+                                           double * bclv_buffer)
 {
   unsigned int states = 4;
   unsigned int n,k,i;
@@ -470,9 +471,8 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
   
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
 
-  double * left_lookup = pll_aligned_alloc(left_sites*states*rate_cats*sizeof(double),
-                                      PLL_ALIGNMENT_AVX);
-  double *left_res = left_lookup; 
+    
+  double *left_res = bclv_lookup; 
   const double *lclv = left_clv;
   for (n = 0; n < left_sites; ++n) 
   {
@@ -512,9 +512,9 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
     }
   }
 
-  const double *lres = left_lookup;
+  const double *lres = bclv_lookup;
   const double *rclv = right_clv;
-  const double *before_left_lookup = left_lookup - span;
+  const double *before_left_lookup = bclv_lookup - span;
   const double *before_right_clv = right_clv - span;
   for (n = 0; n < identifiers; ++n)
   {
@@ -605,7 +605,6 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
       parent_scaler[n] += 1;
     }
   }
-  pll_aligned_free(left_lookup);
 }
 static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
                                            unsigned int rate_cats,

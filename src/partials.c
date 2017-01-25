@@ -198,7 +198,8 @@ static void case_innerinner(pll_partition_t * partition,
                                     left_matrix,
                                     right_matrix,
                                     left_scaler,
-                                    right_scaler);
+                                    right_scaler,
+                                    partition->bclv_buffer);
       } 
       else 
       {
@@ -215,7 +216,8 @@ static void case_innerinner(pll_partition_t * partition,
                                     right_matrix,
                                     left_matrix,
                                     right_scaler,
-                                    left_scaler);
+                                    left_scaler,
+                                    partition->bclv_buffer);
       }
     }
     else

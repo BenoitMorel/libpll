@@ -122,6 +122,7 @@ static void dealloc_partition_data(pll_partition_t * partition)
     free(repeats->lookup_buffer);
     free(repeats->toclean_buffer);
     free(repeats->id_site_buffer);
+    free(repeats->bclv_buffer);
     free(repeats);
   }
   free(partition);
@@ -894,8 +895,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
     repeats->toclean_buffer = malloc(sites_alloc * sizeof(unsigned int));
     repeats->id_site_buffer = malloc(sites_alloc * sizeof(unsigned int));
+    repeats->bclv_buffer = pll_aligned_alloc(sites_alloc * rate_cats * states 
+        * sizeof(double), partition->alignment);
     if (!(repeats->pernode_max_id && repeats->lookup_buffer
-         && repeats->pernode_allocated_clvs
+         && repeats->pernode_allocated_clvs && repeats->bclv_buffer
          && repeats->toclean_buffer && repeats->id_site_buffer))
     {
       dealloc_partition_data(partition);
