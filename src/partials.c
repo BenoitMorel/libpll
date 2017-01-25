@@ -160,7 +160,7 @@ static void case_innerinner(pll_partition_t * partition,
   else
     right_scaler = NULL;
 
-  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS 
+  if ((partition->attributes & PLL_ATTRIB_SITES_REPEATS)
       && (partition->repeats->pernode_max_id[op->child1_clv_index]
          ||  partition->repeats->pernode_max_id[op->child2_clv_index]))
   {
@@ -222,6 +222,7 @@ static void case_innerinner(pll_partition_t * partition,
                                   left_scaler,
                                   bclv_buffer);
     }
+    return;
   }
 
   pll_core_update_partial_ii(partition->states,
