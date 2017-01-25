@@ -160,13 +160,16 @@ static void case_innerinner(pll_partition_t * partition,
   else
     right_scaler = NULL;
 
-  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) 
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS 
+      && (partition->repeats->pernode_max_id[op->child1_clv_index]
+         ||  partition->repeats->pernode_max_id[op->child2_clv_index]))
   {
     unsigned int identifiers = 
       partition->repeats->pernode_max_id[op->parent_clv_index];
     const unsigned int * parent_id_site = 0x0;
     const unsigned int * left_site_id = 0x0;
     const unsigned int * right_site_id = 0x0;
+    double * bclv_buffer = partition->repeats ? partition->repeats->bclv_buffer : NULL;
     unsigned int left_sites = partition->repeats->pernode_max_id[op->child1_clv_index];
     unsigned int right_sites = partition->repeats->pernode_max_id[op->child2_clv_index];
     identifiers = identifiers ? identifiers : partition->sites;
@@ -181,64 +184,44 @@ static void case_innerinner(pll_partition_t * partition,
     left_sites = left_sites ? left_sites : partition->sites;
     right_sites = right_sites ? right_sites : partition->sites;
 
-    if (left_site_id || right_site_id) 
+    if (left_sites < right_sites) 
     {
-      if (left_sites < right_sites) 
-      {
-        pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
-                                    partition->rate_cats,
-                                    parent_clv,
-                                    parent_id_site,
-                                    parent_scaler,
-                                    left_clv,
-                                    left_site_id,
-                                    partition->repeats->pernode_max_id[op->child1_clv_index],
-                                    right_clv,
-                                    right_site_id, 
-                                    left_matrix,
-                                    right_matrix,
-                                    left_scaler,
-                                    right_scaler,
-                                    partition->bclv_buffer);
-      } 
-      else 
-      {
-        pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
-                                    partition->rate_cats,
-                                    parent_clv,
-                                    parent_id_site,
-                                    parent_scaler,
-                                    right_clv,
-                                    right_site_id,
-                                    partition->repeats->pernode_max_id[op->child2_clv_index],
-                                    left_clv,
-                                    left_site_id, 
-                                    right_matrix,
-                                    left_matrix,
-                                    right_scaler,
-                                    left_scaler,
-                                    partition->bclv_buffer);
-      }
-    }
-    else
+      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+                                  partition->rate_cats,
+                                  parent_clv,
+                                  parent_id_site,
+                                  parent_scaler,
+                                  left_clv,
+                                  left_site_id,
+                                  left_sites,
+                                  right_clv,
+                                  right_site_id,
+                                  right_sites,
+                                  left_matrix,
+                                  right_matrix,
+                                  left_scaler,
+                                  right_scaler,
+                                  bclv_buffer);
+    } 
+    else 
     {
-      pll_core_update_partial_repeats(partition->states,
-                                    identifiers,
-                                    partition->rate_cats,
-                                    parent_clv,
-                                    parent_id_site,
-                                    parent_scaler,
-                                    left_clv,
-                                    left_site_id,
-                                    right_clv,
-                                    right_site_id, 
-                                    left_matrix,
-                                    right_matrix,
-                                    left_scaler,
-                                    right_scaler,
-                                    partition->attributes);
+      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+                                  partition->rate_cats,
+                                  parent_clv,
+                                  parent_id_site,
+                                  parent_scaler,
+                                  right_clv,
+                                  right_site_id,
+                                  right_sites,
+                                  left_clv,
+                                  left_site_id,
+                                  left_sites,
+                                  right_matrix,
+                                  left_matrix,
+                                  right_scaler,
+                                  left_scaler,
+                                  bclv_buffer);
     }
-    return; 
   }
 
   pll_core_update_partial_ii(partition->states,

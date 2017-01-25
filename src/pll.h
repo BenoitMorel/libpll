@@ -1180,6 +1180,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
                                            unsigned int left_sites,
                                            const double * right_clv,
                                            const unsigned int * right_site_id,
+                                           unsigned int right_sites,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,

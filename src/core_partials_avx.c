@@ -447,6 +447,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
                                            unsigned int left_sites,
                                            const double * right_clv,
                                            const unsigned int * right_site_id,
+                                           unsigned int right_sites,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
@@ -472,7 +473,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
 
     
-  double *left_res = bclv_lookup; 
+  double *left_res = bclv_buffer; 
   const double *lclv = left_clv;
   for (n = 0; n < left_sites; ++n) 
   {
@@ -512,9 +513,9 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
     }
   }
 
-  const double *lres = bclv_lookup;
+  const double *lres = bclv_buffer;
   const double *rclv = right_clv;
-  const double *before_left_lookup = bclv_lookup - span;
+  const double *before_left_lookup = bclv_buffer - span;
   const double *before_right_clv = right_clv - span;
   for (n = 0; n < identifiers; ++n)
   {
@@ -542,38 +543,26 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
       ymm4 = _mm256_load_pd(rmat);
       ymm5 = _mm256_load_pd(rclv);
       ymm0 = _mm256_mul_pd(ymm4,ymm5);
-
       rmat += states;
-
       ymm4 = _mm256_load_pd(rmat);
       ymm1 = _mm256_mul_pd(ymm4,ymm5);
-
       rmat += states;
-
       ymm4 = _mm256_load_pd(rmat);
       ymm2 = _mm256_mul_pd(ymm4,ymm5);
-
       rmat += states;
-
       ymm4 = _mm256_load_pd(rmat);
       ymm3 = _mm256_mul_pd(ymm4,ymm5);
-
       rmat += states;
-
       /* compute y */
       ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
       ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
-
       ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
       ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
-
       ymm0 = _mm256_add_pd(ymm4,ymm5);
       ymm1 = _mm256_add_pd(ymm6,ymm7);
-
       ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
       ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
       ymm4 = _mm256_add_pd(ymm2,ymm3);
-
       /* compute x*y */
       xmm4 = _mm256_load_pd(lres);
       xmm0 = _mm256_mul_pd(xmm4,ymm4);
