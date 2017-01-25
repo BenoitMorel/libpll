@@ -181,9 +181,11 @@ static void case_innerinner(pll_partition_t * partition,
     left_sites = left_sites ? left_sites : partition->sites;
     right_sites = right_sites ? right_sites : partition->sites;
 
-    if (left_sites < 100 && right_sites == partition->sites) 
+    if (left_site_id || right_site_id) 
     {
-      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+      if (left_sites < right_sites) 
+      {
+        pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
                                     partition->rate_cats,
                                     parent_clv,
                                     parent_id_site,
@@ -197,10 +199,10 @@ static void case_innerinner(pll_partition_t * partition,
                                     right_matrix,
                                     left_scaler,
                                     right_scaler);
-    } 
-    else if (right_sites < 100 && left_sites == partition->sites) 
-    {
-      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+      } 
+      else 
+      {
+        pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
                                     partition->rate_cats,
                                     parent_clv,
                                     parent_id_site,
@@ -214,7 +216,8 @@ static void case_innerinner(pll_partition_t * partition,
                                     left_matrix,
                                     right_scaler,
                                     left_scaler);
-    } 
+      }
+    }
     else
     {
       pll_core_update_partial_repeats(partition->states,

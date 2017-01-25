@@ -896,7 +896,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     repeats->id_site_buffer = malloc(sites_alloc * sizeof(unsigned int));
     if (!(repeats->pernode_max_id && repeats->lookup_buffer
          && repeats->pernode_allocated_clvs
-         && repeats->toclean_buffer && repeats->id_site_buffer)) 
+         && repeats->toclean_buffer && repeats->id_site_buffer))
     {
       dealloc_partition_data(partition);
       pll_errno = PLL_ERROR_MEM_ALLOC;

@@ -511,11 +511,27 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
       left_res += states;
     }
   }
-  const double *rclv = right_clv;
 
+  const double *lres = left_lookup;
+  const double *rclv = right_clv;
+  const double *before_left_lookup = left_lookup - span;
+  const double *before_right_clv = right_clv - span;
   for (n = 0; n < identifiers; ++n)
   {
-    const double *lres = &left_lookup[(left_site_id[n] - 1) * span];
+    if (right_site_id) 
+    {
+      if (parent_id_site) 
+      {
+        unsigned int site = parent_id_site[n];
+        lres = &before_left_lookup[left_site_id[site] * span];
+        rclv = &before_right_clv[right_site_id[site] * span];
+      } else {
+        lres = &before_left_lookup[left_site_id[n] * span];
+        rclv = &before_right_clv[right_site_id[n] * span];
+      }
+    } else {
+        lres = &before_left_lookup[left_site_id[n] * span];
+    }
     rmat = right_matrix;
     scaling = (parent_scaler) ? 0xF : 0;
 
