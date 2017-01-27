@@ -299,6 +299,7 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
     partition->states : 0;
   unsigned int sites_to_alloc;
   unsigned int s;
+
   // in case site repeats is activated but not used for this node
   if (!min_size || repeats->lookup_buffer_size <= min_size)
   {
@@ -312,8 +313,8 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
     // fill the parent repeats identifiers
     for (s = 0; s < partition->sites; ++s) 
     {
-      unsigned int index_lookup = site_id_left[s]
-        + site_id_right[s] * max_id_left;
+      unsigned int index_lookup = (site_id_left[s] - 1)
+        + (site_id_right[s] - 1) * max_id_left;
       unsigned int id = repeats->lookup_buffer[index_lookup];
       if (!id) 
       {

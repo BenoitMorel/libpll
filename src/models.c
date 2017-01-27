@@ -526,7 +526,7 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
           if (partition->repeats && partition->repeats->pernode_max_id[i]) 
           {
             tipclv = partition->clv[i] 
-              + partition->repeats->pernode_site_id[i][j] * span_padded; 
+              + (partition->repeats->pernode_site_id[i][j] - 1) * span_padded; 
           } 
           else 
           {
