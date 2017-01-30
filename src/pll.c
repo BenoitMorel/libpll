@@ -548,7 +548,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
 
   /* if site repeats are enabled, we have to allocate clvs later */
-  //if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
+  if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
   {
     /* if tip pattern precomputation is enabled, then do not allocate CLV space
        for the tip nodes */
@@ -829,7 +829,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
   /* scales will be allocated later if we use site repeats */
-  //if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
+  if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
   {
     for (i = 0; i < partition->scale_buffers; ++i)
     {

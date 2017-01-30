@@ -1271,17 +1271,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                double ** freqs,
                                                double * sumtable);
 
-PLL_EXPORT int pll_core_update_sumtable_repeats_avx(unsigned int states,
-                                               unsigned int sites,
-                                               unsigned int rate_cats,
-                                               const double * clvp,
-                                               const unsigned int * parent_site_id,
-                                               const double * clvc,
-                                               const unsigned int * child_site_id,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
-                                               double ** freqs,
-                                               double *sumtable);
 
 PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                unsigned int sites,
