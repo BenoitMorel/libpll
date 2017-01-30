@@ -1309,6 +1309,19 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
                                                    const double * diagptable,
                                                    double * d_f,
                                                    double * dd_f);
+
+PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * lookup_buffer);
 #endif
 
 /* functions in core_derivatives_avx2.c */

@@ -129,27 +129,77 @@ static int sumtable_innerinner(pll_partition_t * partition,
   }
 
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) {
-    const unsigned int * parent_site_id =
-      partition->repeats->pernode_max_id[parent_clv_index]
-      ? partition->repeats->pernode_site_id[parent_clv_index]
-      : NULL;
-    const unsigned int * child_site_id =
-      partition->repeats->pernode_max_id[child_clv_index]
-      ? partition->repeats->pernode_site_id[child_clv_index]
-      : NULL;
-    retval =
-    pll_core_update_sumtable_repeats(partition->states,
+    if (partition->states != 4) 
+    {
+      fprintf(stderr, "sumtables not implemented with repeats and states != 4\n");
+      return PLL_FAILURE;
+    }
+    unsigned int parent_max_id = partition->repeats->pernode_max_id[parent_clv_index];
+    unsigned int child_max_id = partition->repeats->pernode_max_id[child_clv_index];
+    if (!parent_max_id && !child_max_id) // no repeats 
+    {
+      retval =
+      pll_core_update_sumtable_ii(partition->states,
+                              sites,
+                              partition->rate_cats,
+                              partition->clv[parent_clv_index],
+                              partition->clv[child_clv_index],
+                              eigenvecs,
+                              inv_eigenvecs,
+                              freqs,
+                              sumtable,
+                              partition->attributes);
+    }
+    else
+    {
+      const unsigned int * parent_site_id =
+        parent_max_id
+        ? partition->repeats->pernode_site_id[parent_clv_index]
+        : NULL;
+      const unsigned int * child_site_id =
+        child_max_id
+        ? partition->repeats->pernode_site_id[child_clv_index]
+        : NULL;
+
+      parent_max_id = parent_max_id ? parent_max_id : sites;
+      child_max_id = child_max_id ? child_max_id : sites;
+      if (parent_max_id < child_max_id)
+      {
+        // TODO implement the generic (not 4x4) version
+        retval =
+        pll_core_update_sumtable_repeats_bclv_4x4_avx(
                               sites,
                               partition->rate_cats,
                               partition->clv[parent_clv_index],
                               parent_site_id,
+                              parent_max_id,
                               partition->clv[child_clv_index],
                               child_site_id,
                               eigenvecs,
                               inv_eigenvecs,
                               freqs,
                               sumtable,
-                              partition->attributes);
+                              partition->repeats->bclv_buffer);
+      }
+      else
+      {
+        retval =
+        pll_core_update_sumtable_repeats_bclv_4x4_avx(
+                              sites,
+                              partition->rate_cats,
+                              partition->clv[child_clv_index],
+                              child_site_id,
+                              child_max_id,
+                              partition->clv[parent_clv_index],
+                              parent_site_id,
+                              inv_eigenvecs,
+                              eigenvecs,
+                              freqs,
+                              sumtable,
+                              partition->repeats->bclv_buffer);
+
+      }
+    }
   }
   else 
   {

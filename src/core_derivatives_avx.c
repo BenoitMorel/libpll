@@ -158,6 +158,176 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
   return PLL_SUCCESS;
 }
 
+PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * lookup_buffer)
+{
+  unsigned int i, j, k, n;
+
+  /* build sumtable */
+  double * sum = sumtable;
+
+  double * t_eigenvecs;
+  double * t_freqs;
+
+  unsigned int states = 4;
+  unsigned int span_padded = rate_cats * states;
+  double * parent_lookup = lookup_buffer;
+
+  /* transposed inv_eigenvecs */
+  double * tt_inv_eigenvecs = (double *) pll_aligned_alloc (
+      (states * states * rate_cats) * sizeof(double),
+      PLL_ALIGNMENT_AVX);
+
+  if (!tt_inv_eigenvecs)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for tt_inv_eigenvecs");
+    return PLL_FAILURE;
+  }
+
+  for (i = 0; i < rate_cats; ++i)
+  {
+    t_freqs = freqs[i];
+    for (j = 0; j < states; ++j)
+      for (k = 0; k < states; ++k)
+      {
+        tt_inv_eigenvecs[i * states * states + j * states + k] =
+            inv_eigenvecs[i][k * states + j] * t_freqs[k];
+      }
+  }
+  
+  const double * t_clvp = clvp;
+  for (n = 0; n < parent_max_id; n++)
+  {
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_eigenvecs = eigenvecs[i];
+
+      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
+      __m256d v_lefterm[4];
+      v_lefterm[0] = v_lefterm[1] = v_lefterm[2] = v_lefterm[3] = _mm256_setzero_pd ();
+      __m256d v_eigen;
+      __m256d v_clvp;
+      
+      v_clvp = _mm256_load_pd (t_clvp);
+
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[0] = _mm256_add_pd (v_lefterm[0],
+                                    _mm256_mul_pd (v_eigen, v_clvp));
+      ct_inv_eigenvecs += 4;
+      
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[1] = _mm256_add_pd (v_lefterm[1],
+                                    _mm256_mul_pd (v_eigen, v_clvp));
+
+      ct_inv_eigenvecs += 4;
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[2] = _mm256_add_pd (v_lefterm[2],
+                                    _mm256_mul_pd (v_eigen, v_clvp));
+      
+      ct_inv_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[3] = _mm256_add_pd (v_lefterm[3],
+                                    _mm256_mul_pd (v_eigen, v_clvp));
+
+      ct_inv_eigenvecs += 4;
+      
+      /* compute lefterm */
+      __m256d xmm0 = _mm256_unpackhi_pd (v_lefterm[0], v_lefterm[1]);
+      __m256d xmm1 = _mm256_unpacklo_pd (v_lefterm[0], v_lefterm[1]);
+      __m256d xmm2 = _mm256_unpackhi_pd (v_lefterm[2], v_lefterm[3]);
+      __m256d xmm3 = _mm256_unpacklo_pd (v_lefterm[2], v_lefterm[3]);
+      xmm0 = _mm256_add_pd (xmm0, xmm1);
+      xmm1 = _mm256_add_pd (xmm2, xmm3);
+      xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
+      xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
+      __m256d v_lefterm_sum = _mm256_add_pd (xmm2, xmm3);
+      _mm256_store_pd (parent_lookup, v_lefterm_sum);
+      t_clvp += states;
+      parent_lookup += states;
+
+    }
+  }
+      
+      /* vectorized loop from update_sumtable() */
+  for (n = 0; n < sites; n++)
+  {
+    unsigned int cid = child_site_id ? child_site_id[n] - 1 : n;
+    parent_lookup = &lookup_buffer[(parent_site_id[n] - 1) * span_padded];
+    const double * t_clvc = &clvc[cid * span_padded];
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_eigenvecs = eigenvecs[i];
+
+      const double * c_eigenvecs = t_eigenvecs;
+
+      __m256d v_righterm[4];
+      v_righterm[0] = v_righterm[1] = v_righterm[2] = v_righterm[3] = _mm256_setzero_pd ();
+
+      __m256d v_eigen;
+      __m256d v_clvc;
+
+      v_clvc = _mm256_load_pd (t_clvc);
+
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[0] = _mm256_add_pd (v_righterm[0],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[1] = _mm256_add_pd (v_righterm[1],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[2] = _mm256_add_pd (v_righterm[2],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[3] = _mm256_add_pd (v_righterm[3],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+
+      /* compute righterm */
+      __m256d v_lefterm_sum = _mm256_load_pd (parent_lookup);
+
+      /* compute righterm */
+      __m256d xmm0 = _mm256_unpackhi_pd (v_righterm[0], v_righterm[1]);
+      __m256d xmm1 = _mm256_unpacklo_pd (v_righterm[0], v_righterm[1]);
+      __m256d xmm2 = _mm256_unpackhi_pd (v_righterm[2], v_righterm[3]);
+      __m256d xmm3 = _mm256_unpacklo_pd (v_righterm[2], v_righterm[3]);
+      xmm0 = _mm256_add_pd (xmm0, xmm1);
+      xmm1 = _mm256_add_pd (xmm2, xmm3);
+      xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
+      xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
+      __m256d v_righterm_sum = _mm256_add_pd (xmm2, xmm3);
+
+      /* update sum */
+      __m256d v_prod = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
+      _mm256_store_pd (sum, v_prod);
+
+      t_clvc += states;
+      parent_lookup += states;
+      sum += states;
+    }
+  }
+
+  pll_aligned_free (tt_inv_eigenvecs);
+
+  return PLL_SUCCESS;
+}
 static int core_update_sumtable_repeats_4x4_avx(unsigned int sites,
                                            unsigned int rate_cats,
                                            const double * clvp,
