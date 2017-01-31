@@ -787,14 +787,17 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
                                            double * parent_clv,
                                            const unsigned int * parent_id_site,
                                            unsigned int * parent_scaler,
-                                           double * left_clv,
+                                           const double * left_clv,
                                            const unsigned int * left_site_id,
-                                           double * right_clv,
+                                           unsigned int left_sites,
+                                           const double * right_clv,
                                            const unsigned int * right_site_id,
+                                           unsigned int right_sites,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
+                                           double * bclv_buffer,
                                            unsigned int attrib);
 
 PLL_EXPORT void pll_core_create_lookup_4x4(unsigned int rate_cats,
@@ -1153,22 +1156,8 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const unsigned int * right_scaler,
                                                    unsigned int attrib);
 
-PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
+PLL_EXPORT void pll_core_update_partial_repeat_avx(unsigned int states,
                                            unsigned int identifiers,
-                                           unsigned int rate_cats,
-                                           double * parent_clv,
-                                           const unsigned int * parent_id_site,
-                                           unsigned int * parent_scaler,
-                                           const double * left_clv,
-                                           const unsigned int * left_site_id,
-                                           const double * right_clv,
-                                           const unsigned int * right_site_id,
-                                           const double * left_matrix,
-                                           const double * right_matrix,
-                                           const unsigned int * left_scaler,
-                                           const unsigned int * right_scaler);
-
-PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifiers,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            const unsigned int * parent_id_site,
@@ -1183,7 +1172,8 @@ PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identi
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler,
-                                           double * bclv_buffer);
+                                           double * bclv_buffer,
+                                           unsigned int attrib);
 #endif
 
 /* functions in core_partials_avx2.c */

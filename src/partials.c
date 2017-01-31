@@ -183,45 +183,25 @@ static void case_innerinner(pll_partition_t * partition,
       identifiers += partition->states;
     left_sites = left_sites ? left_sites : partition->sites;
     right_sites = right_sites ? right_sites : partition->sites;
-
-    if (left_sites < right_sites) 
-    {
-      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+    unsigned int inv = left_sites < right_sites;
+      pll_core_update_partial_repeats(partition->states,
+                                  identifiers,
                                   partition->rate_cats,
                                   parent_clv,
                                   parent_id_site,
                                   parent_scaler,
-                                  left_clv,
-                                  left_site_id,
-                                  left_sites,
-                                  right_clv,
-                                  right_site_id,
-                                  right_sites,
-                                  left_matrix,
-                                  right_matrix,
-                                  left_scaler,
-                                  right_scaler,
-                                  bclv_buffer);
-    } 
-    else 
-    {
-      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
-                                  partition->rate_cats,
-                                  parent_clv,
-                                  parent_id_site,
-                                  parent_scaler,
-                                  right_clv,
-                                  right_site_id,
-                                  right_sites,
-                                  left_clv,
-                                  left_site_id,
-                                  left_sites,
-                                  right_matrix,
-                                  left_matrix,
-                                  right_scaler,
-                                  left_scaler,
-                                  bclv_buffer);
-    }
+                                  inv  ? left_clv : right_clv,
+                                  inv  ? left_site_id : right_site_id,
+                                  inv  ? left_sites : right_sites,
+                                  !inv ? left_clv : right_clv,
+                                  !inv ? left_site_id : right_site_id,
+                                  !inv ? left_sites : right_sites,
+                                  inv  ? left_matrix : right_matrix,
+                                  !inv ? left_matrix : right_matrix,
+                                  inv ? left_scaler : right_scaler,
+                                  !inv ? left_scaler : right_scaler,
+                                  bclv_buffer,
+                                  partition->attributes);
     return;
   }
 
