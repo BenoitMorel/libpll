@@ -859,7 +859,7 @@ PLL_EXPORT void pll_core_update_partial_repeat_avx(unsigned int states,
                                            unsigned int attrib)
 {
   // temporary disable 4x4
-  if (0 && states == 4) 
+  if (states == 4) 
   {
     pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
                                              rate_cats,
