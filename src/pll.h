@@ -87,8 +87,10 @@
 #define PLL_ATTRIB_AB_MASK         (7 << 5)
 #define PLL_ATTRIB_AB_FLAG         (1 << 8)
 
+#define PLL_ATTRIB_RATE_SCALERS    (1 << 9)
+
 /* sites repeats */
-#define PLL_ATTRIB_SITES_REPEATS    (1 << 9)
+#define PLL_ATTRIB_SITES_REPEATS    (1 << 10)
 #define REPEATS_LOOKUP_SIZE 2000000 
 
 /* topological rearrangements */
@@ -574,6 +576,8 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,
                                       unsigned int child_clv_index,
+                                      int parent_scaler_index,
+                                      int child_scaler_index,
                                       const unsigned int * params_indices,
                                       double *sumtable);
 
@@ -625,10 +629,8 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
                                                 unsigned int * tip_count);
 
-#ifdef __linux__
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
                                                        unsigned int * tip_count);
-#endif
 
 PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
                                   void (*cb_destroy)(void *));
@@ -638,10 +640,8 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
                                                 unsigned int * tip_count);
 
-#ifdef __linux__
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
                                                        unsigned int * tip_count);
-#endif
 
 PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
                                   void (*cb_destroy)(void *));
@@ -839,30 +839,21 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            unsigned int rate_cats,
                                            const double * parent_clv,
                                            const double * child_clv,
+                                           const unsigned int * parent_scaler,
+                                           const unsigned int * child_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
                                            unsigned int attrib);
 
-PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
-                                           unsigned int sites,
-                                           unsigned int rate_cats,
-                                           const double * parent_clv,
-                                           const unsigned int * parent_site_id,
-                                           const double * child_clv,
-                                           const unsigned int * child_site_id,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
-                                           double *sumtable,
-                                           unsigned int attrib);
 
 PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
                                            const double * parent_clv,
                                            const unsigned char * left_tipchars,
+                                           const unsigned int * parent_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
@@ -1088,7 +1079,8 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                const unsigned char * left_tipchars,
                                                const unsigned char * right_tipchars,
                                                const double * lookup,
-                                               unsigned int tipstates_count);
+                                               unsigned int tipstates_count,
+                                               unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -1096,7 +1088,8 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
                                                    unsigned int * parent_scaler,
                                                    const unsigned char * left_tipchars,
                                                    const unsigned char * right_tipchars,
-                                                   const double * lookup);
+                                                   const double * lookup,
+                                                   unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                unsigned int sites,
@@ -1109,7 +1102,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                const double * right_matrix,
                                                const unsigned int * right_scaler,
                                                const unsigned int * tipmap,
-                                               unsigned int tipmap_size);
+                                               unsigned int tipmap_size,
+                                               unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -1119,7 +1113,8 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    const double * right_clv,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
-                                                   const unsigned int * right_scaler);
+                                                   const unsigned int * right_scaler,
+                                                   unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti_20x20_avx(unsigned int sites,
                                                      unsigned int rate_cats,
@@ -1143,7 +1138,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                                const double * left_matrix,
                                                const double * right_matrix,
                                                const unsigned int * left_scaler,
-                                               const unsigned int * right_scaler);
+                                               const unsigned int * right_scaler,
+                                               unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -1154,7 +1150,8 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
-                                                   const unsigned int * right_scaler);
+                                                   const unsigned int * right_scaler,
+                                                   unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
                                            unsigned int identifiers,
@@ -1170,6 +1167,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * left_scaler,
                                            const unsigned int * right_scaler);
+
 PLL_EXPORT void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifiers,
                                            unsigned int rate_cats,
                                            double * parent_clv,
@@ -1202,7 +1200,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
                                                 const double * right_matrix,
                                                 const unsigned int * right_scaler,
                                                 const unsigned int * tipmap,
-                                                unsigned int tipmap_size);
+                                                unsigned int tipmap_size,
+                                                unsigned int attrib);
 
 PLL_EXPORT
 void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
@@ -1227,7 +1226,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
                                                 const double * left_matrix,
                                                 const double * right_matrix,
                                                 const unsigned int * left_scaler,
-                                                const unsigned int * right_scaler);
+                                                const unsigned int * right_scaler,
+                                                unsigned int attrib);
 #endif
 
 
@@ -1266,10 +1266,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                const double * clvp,
                                                const double * clvc,
+                                               const unsigned int * parent_scaler,
+                                               const unsigned int * child_scaler,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
-                                               double * sumtable);
+                                               double * sumtable,
+                                               unsigned int attrib);
 
 
 PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
@@ -1277,6 +1280,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
                                                const unsigned char * left_tipchars,
+                                               const unsigned int * parent_scaler,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
@@ -1322,16 +1326,20 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
                                                 unsigned int rate_cats,
                                                 const double * clvp,
                                                 const double * clvc,
+                                                const unsigned int * parent_scaler,
+                                                const unsigned int * child_scaler,
                                                 double ** eigenvecs,
                                                 double ** inv_eigenvecs,
                                                 double ** freqs,
-                                                double *sumtable);
+                                                double *sumtable,
+                                                unsigned int attrib);
 
 PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
                                                 unsigned int sites,
                                                 unsigned int rate_cats,
                                                 const double * parent_clv,
                                                 const unsigned char * left_tipchars,
+                                                const unsigned int * parent_scaler,
                                                 double ** eigenvecs,
                                                 double ** inv_eigenvecs,
                                                 double ** freqs,
@@ -1482,7 +1490,8 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,
                                                          const double * invar_proportion,
                                                          const int * invar_indices,
                                                          const unsigned int * freqs_indices,
-                                                         double * persite_lnl);
+                                                         double * persite_lnl,
+                                                         unsigned int attrib);
 
 PLL_EXPORT double pll_core_root_loglikelihood_repeats_avx(unsigned int states,
                                                   unsigned int sites,
@@ -1547,7 +1556,8 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                                          const double * invar_proportion,
                                                          const int * invar_indices,
                                                          const unsigned int * freqs_indices,
-                                                         double * persite_lnl);
+                                                         double * persite_lnl,
+                                                         unsigned int attrib);
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
                                                            unsigned int rate_cats,

@@ -309,7 +309,8 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                                   invar_proportion,
                                                   invar_indices,
                                                   freqs_indices,
-                                                  persite_lnl);
+                                                  persite_lnl,
+                                                  attrib);
   }
   #endif
   #ifdef HAVE_AVX2
@@ -327,7 +328,8 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                                   invar_proportion,
                                                   invar_indices,
                                                   freqs_indices,
-                                                  persite_lnl);
+                                                  persite_lnl,
+                                                  attrib);
   }
   #endif
 
@@ -486,7 +488,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                     invar_proportion,
                                                     invar_indices,
                                                     freqs_indices,
-                                                    persite_lnl);
+                                                    persite_lnl,
+                                                    attrib);
     }
     else if (states == 20)
     {
@@ -546,7 +549,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                     invar_proportion,
                                                     invar_indices,
                                                     freqs_indices,
-                                                    persite_lnl);
+                                                    persite_lnl,
+                                                    attrib);
     }
     else if (states == 20)
     {
@@ -813,7 +817,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                     invar_proportion,
                                                     invar_indices,
                                                     freqs_indices,
-                                                    persite_lnl);
+                                                    persite_lnl,
+                                                    attrib);
     }
     else
     {
@@ -856,7 +861,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                     invar_proportion,
                                                     invar_indices,
                                                     freqs_indices,
-                                                    persite_lnl);
+                                                    persite_lnl,
+                                                    attrib);
     }
     else
     {
