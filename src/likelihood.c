@@ -582,7 +582,9 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   double logl;
 
 
-  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS)
+  if (partition->attributes & PLL_ATTRIB_SITES_REPEATS 
+      && (partition->repeats->pernode_max_id[parent_clv_index] 
+          || partition->repeats->pernode_max_id[child_clv_index]))
   {
     return edge_loglikelihood_repeats(partition,
                             parent_clv_index,

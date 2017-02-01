@@ -21,6 +21,44 @@
 
 #include "pll.h"
 
+
+PLL_EXPORT int pll_core_update_sumtable_repeats_bclv(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * bclv_buffer,
+                                           unsigned int attrib)
+{
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    return pll_core_update_sumtable_repeats_bclv_avx(states,
+                                                     sites,
+                                                     rate_cats,
+                                                     clvp,
+                                                     parent_site_id,
+                                                     parent_max_id,
+                                                     clvc,
+                                                     child_site_id,
+                                                     eigenvecs,
+                                                     inv_eigenvecs,
+                                                     freqs,
+                                                     sumtable,
+                                                     bclv_buffer);
+  }
+#endif
+  return PLL_FAILURE;
+} 
+
+
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
@@ -637,7 +675,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives_repeats(unsigned int states,
   {
     ef_sites = sites;
   }
-
   *d_f = 0.0;
   *dd_f = 0.0;
 

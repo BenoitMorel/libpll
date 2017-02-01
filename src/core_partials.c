@@ -480,7 +480,7 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    pll_core_update_partial_repeat_avx(states,
+    pll_core_update_partial_repeats_avx(states,
                                              identifiers,
                                              rate_cats,
                                              parent_clv,

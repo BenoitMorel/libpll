@@ -826,6 +826,21 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
 
 /* functions in core_derivatives.c */
 
+PLL_EXPORT int pll_core_update_sumtable_repeats_bclv(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * bclv_buffer,
+                                           unsigned int attrib);
+
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
@@ -1156,7 +1171,7 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const unsigned int * right_scaler,
                                                    unsigned int attrib);
 
-PLL_EXPORT void pll_core_update_partial_repeat_avx(unsigned int states,
+PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
                                            unsigned int identifiers,
                                            unsigned int rate_cats,
                                            double * parent_clv,
@@ -1293,7 +1308,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
                                                    double * d_f,
                                                    double * dd_f);
 
-PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
+PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
+                                           unsigned int sites,
                                            unsigned int rate_cats,
                                            const double * clvp,
                                            const unsigned int * parent_site_id,
@@ -1304,7 +1320,7 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
-                                           double * lookup_buffer);
+                                           double * bclv_buffer);
 #endif
 
 /* functions in core_derivatives_avx2.c */

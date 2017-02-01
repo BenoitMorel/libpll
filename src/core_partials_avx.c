@@ -598,7 +598,7 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
   }
 }
 
-static void pll_core_update_partial_repeat_bclv_avx(unsigned int states,
+static void pll_core_update_partial_repeats_bclv_avx(unsigned int states,
                                            unsigned int identifiers,
                                            unsigned int rate_cats,
                                            double * parent_clv,
@@ -638,7 +638,7 @@ static void pll_core_update_partial_repeat_bclv_avx(unsigned int states,
 
 
   double * lbclv = bclv_buffer;
-  const double *lclv = 0;
+  const double *lclv = left_clv;
   /* compute left bCLV */
   for (n = 0 ; n < left_sites; ++n)
   {
@@ -839,7 +839,7 @@ static void pll_core_update_partial_repeat_bclv_avx(unsigned int states,
 }
 
 
-PLL_EXPORT void pll_core_update_partial_repeat_avx(unsigned int states,
+PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
                                            unsigned int identifiers,
                                            unsigned int rate_cats,
                                            double * parent_clv,
@@ -858,7 +858,6 @@ PLL_EXPORT void pll_core_update_partial_repeat_avx(unsigned int states,
                                            double * bclv_buffer,
                                            unsigned int attrib)
 {
-  // temporary disable 4x4
   if (states == 4) 
   {
     pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
@@ -881,7 +880,7 @@ PLL_EXPORT void pll_core_update_partial_repeat_avx(unsigned int states,
     return;
   }
 
-  pll_core_update_partial_repeat_bclv_avx(states, 
+  pll_core_update_partial_repeats_bclv_avx(states, 
                                              identifiers,
                                              rate_cats,
                                              parent_clv,
