@@ -705,10 +705,11 @@ static void pll_core_update_partial_repeats_bclv_avx(unsigned int states,
         xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
 
         __m256d v_terma_sum = _mm256_add_pd(xmm2,xmm3);
-        _mm256_store_pd(lbclv, v_terma_sum);
-        lbclv += states_padded;
-        lclv += states_padded;
+        _mm256_store_pd(lbclv + i, v_terma_sum);
       }
+      lmat -= displacement;
+      lbclv += states_padded;
+        lclv += states_padded;
     } 
   }
 
@@ -779,7 +780,7 @@ static void pll_core_update_partial_repeats_bclv_avx(unsigned int states,
         rmat = rm3;
 
         /* compute terma */
-        __m256d v_terma_sum = _mm256_load_pd(lbclv);
+        __m256d v_terma_sum = _mm256_load_pd(lbclv+i);
         
         /* compute termb */
 
@@ -811,7 +812,6 @@ static void pll_core_update_partial_repeats_bclv_avx(unsigned int states,
       /* reset pointers to point to the start of the next p-matrix, as the
          vectorization assumes a square states_padded * states_padded matrix,
          even though the real matrix is states * states_padded */
-      lmat -= displacement;
       rmat -= displacement;
 
       parent_clv += states_padded;

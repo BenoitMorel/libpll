@@ -377,7 +377,6 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
                                            double *sumtable,
                                            double * bclv_buffer)
 {
-  // TODO enable 4x4
   if (states == 4) 
   {
     return pll_core_update_sumtable_repeats_bclv_4x4_avx(sites, 
@@ -471,7 +470,6 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
         for (k = 0; k < states_padded; k += 4)
         {
           v_clvp = _mm256_load_pd (t_clvp + k);
-
           /* row 0 */
           v_eigen = _mm256_load_pd (im0 + k);
           v_lefterm0 = _mm256_add_pd (v_lefterm0,
@@ -503,11 +501,10 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
         xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
         xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
         __m256d v_lefterm_sum = _mm256_add_pd (xmm2, xmm3);
-
-        _mm256_store_pd (lbclv, v_lefterm_sum);
-        t_clvp += states_padded;
-        lbclv += states_padded;
+        _mm256_store_pd (lbclv + j, v_lefterm_sum);
       }
+      t_clvp += states_padded;
+      lbclv += states_padded;
     }
   }
 
@@ -564,7 +561,7 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
         }
         
         /* load lefterm */
-        __m256d v_lefterm_sum = _mm256_load_pd(lbclv);
+        __m256d v_lefterm_sum = _mm256_load_pd(lbclv + j);
 
         /* compute righterm */
         __m256d xmm0 = _mm256_unpackhi_pd (v_righterm0, v_righterm1);
