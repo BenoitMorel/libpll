@@ -154,7 +154,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
 
     parent_max_id = parent_max_id ? parent_max_id : sites;
     child_max_id = child_max_id ? child_max_id : sites;
-    unsigned int inv = parent_max_id < child_max_id;
+    unsigned int inv = parent_max_id > child_max_id;
     retval =
       pll_core_update_sumtable_repeats_bclv(partition->states,
                           sites,
