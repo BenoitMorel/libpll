@@ -138,10 +138,11 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int * left_scaler;
   unsigned int * right_scaler;
   unsigned int sites = partition->sites;
+  unsigned int additional_sites = partition->asc_bias_alloc 
+    ? partition->states : 0;
 
   /* ascertaiment bias correction */
-  if (partition->asc_bias_alloc)
-    sites += partition->states;
+  sites += additional_sites;
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -179,8 +180,7 @@ static void case_innerinner(pll_partition_t * partition,
       left_site_id = partition->repeats->pernode_site_id[op->child1_clv_index];
     if (partition->repeats->pernode_max_id[op->child2_clv_index])
       right_site_id = partition->repeats->pernode_site_id[op->child2_clv_index];
-    if (partition->asc_bias_alloc)
-      identifiers += partition->states;
+    identifiers += additional_sites;
     left_sites = left_sites ? left_sites : partition->sites;
     right_sites = right_sites ? right_sites : partition->sites;
     unsigned int inv = left_sites < right_sites;
@@ -192,10 +192,10 @@ static void case_innerinner(pll_partition_t * partition,
                                   parent_scaler,
                                   inv  ? left_clv : right_clv,
                                   inv  ? left_site_id : right_site_id,
-                                  inv  ? left_sites : right_sites,
+                                  (inv  ? left_sites : right_sites) + additional_sites,
                                   !inv ? left_clv : right_clv,
                                   !inv ? left_site_id : right_site_id,
-                                  !inv ? left_sites : right_sites,
+                                  (!inv ? left_sites : right_sites) + additional_sites,
                                   inv  ? left_matrix : right_matrix,
                                   !inv ? left_matrix : right_matrix,
                                   inv ? left_scaler : right_scaler,

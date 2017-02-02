@@ -108,7 +108,8 @@ static int sumtable_innerinner(pll_partition_t * partition,
 {
   unsigned int i, retval;
   unsigned int sites = partition->sites;
-
+  unsigned int additional_sites = partition->asc_bias_alloc 
+    ? partition->states : 0;
   double ** eigenvecs = (double **)malloc(partition->rate_cats *
                                           sizeof(double *));
   double ** inv_eigenvecs = (double **)malloc(partition->rate_cats *
@@ -127,8 +128,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
   }
 
   /* ascertaiment bias correction */
-  if (partition->asc_bias_alloc)
-    sites += partition->states;
+  sites += additional_sites;
 
   for (i = 0; i < partition->rate_cats; ++i)
   {
@@ -152,8 +152,8 @@ static int sumtable_innerinner(pll_partition_t * partition,
       ? partition->repeats->pernode_site_id[child_clv_index]
       : NULL;
 
-    parent_max_id = parent_max_id ? parent_max_id : sites;
-    child_max_id = child_max_id ? child_max_id : sites;
+    parent_max_id = parent_max_id ? parent_max_id + additional_sites : sites;
+    child_max_id = child_max_id ? child_max_id + additional_sites : sites;
     unsigned int inv = parent_max_id > child_max_id;
     retval =
       pll_core_update_sumtable_repeats_bclv(partition->states,
