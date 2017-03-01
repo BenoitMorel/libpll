@@ -890,11 +890,11 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
         return PLL_FAILURE;
       }
     }
-    repeats->lookup_buffer_size = REPEATS_LOOKUP_SIZE;
     repeats->pernode_max_id = calloc(nodes_number, sizeof(unsigned int));
     repeats->perscale_max_id = calloc(partition->scale_buffers, sizeof(unsigned int));
     repeats->pernode_allocated_clvs = 
       calloc(nodes_number, sizeof(unsigned int));
+    repeats->lookup_buffer_size = REPEATS_LOOKUP_SIZE;
     repeats->lookup_buffer = 
       calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
     repeats->toclean_buffer = malloc(sites_alloc * sizeof(unsigned int));
@@ -915,6 +915,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   return partition;
 }
+
 
 PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition)
 {
@@ -1273,3 +1274,11 @@ PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
          state_weights,
          sizeof(unsigned int)*partition->states);
 }
+
+PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t size)
+{
+    partition->repeats->lookup_buffer_size = size;
+    partition->repeats->lookup_buffer = 
+      calloc(size, sizeof(unsigned int));
+}
+

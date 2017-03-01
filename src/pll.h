@@ -467,7 +467,7 @@ PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
 PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
                                           const unsigned int * state_weights);
 
-/* functions in list.c */
+PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t size);
 
 PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
