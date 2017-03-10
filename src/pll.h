@@ -68,6 +68,9 @@
 #define PLL_SCALE_THRESHOLD_SQRT (1.0/PLL_SCALE_FACTOR_SQRT)
 #define PLL_SCALE_BUFFER_NONE -1
 #define PLL_MISC_EPSILON 1e-8
+#define PLL_ONE_EPSILON 1e-15
+#define PLL_ONE_MIN (1-PLL_ONE_EPSILON)
+#define PLL_ONE_MAX (1+PLL_ONE_EPSILON)
 
 /* attribute flags */
 
@@ -629,7 +632,7 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
                                                 unsigned int * tip_count);
 
-PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s,
                                                        unsigned int * tip_count);
 
 PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
@@ -640,7 +643,7 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
                                                 unsigned int * tip_count);
 
-PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s,
                                                        unsigned int * tip_count);
 
 PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
@@ -651,9 +654,9 @@ PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
 
 /* functions in utree.c */
 
-PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options);
+PLL_EXPORT void pll_utree_show_ascii(const pll_utree_t * tree, int options);
 
-PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root);
+PLL_EXPORT char * pll_utree_export_newick(const pll_utree_t * root);
 
 PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
                                   int (*cbtrav)(pll_utree_t *),
@@ -693,9 +696,9 @@ PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa);
 
 /* functions in rtree.c */
 
-PLL_EXPORT void pll_rtree_show_ascii(pll_rtree_t * tree, int options);
+PLL_EXPORT void pll_rtree_show_ascii(const pll_rtree_t * tree, int options);
 
-PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root);
+PLL_EXPORT char * pll_rtree_export_newick(const pll_rtree_t * root);
 
 PLL_EXPORT int pll_rtree_traverse(pll_rtree_t * root,
                                   int (*cbtrav)(pll_rtree_t *),
