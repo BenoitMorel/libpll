@@ -223,11 +223,11 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
   double * lbclv = bclv_buffer;
 
   /* transposed inv_eigenvecs */
-  double * tt_inv_eigenvecs = (double *) pll_aligned_alloc (
+  double * tt_inv_eigenvecs_buff = (double *) pll_aligned_alloc (
       (states * states * rate_cats) * sizeof(double),
       PLL_ALIGNMENT_AVX);
-
-  if (!tt_inv_eigenvecs)
+  double ** tt_inv_eigenvecs_ptr = (double **) malloc (rate_cats * sizeof(double *));
+  if (!tt_inv_eigenvecs_ptr || ! tt_inv_eigenvecs_buff)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf (pll_errmsg, 200, "Cannot allocate memory for tt_inv_eigenvecs");
@@ -240,9 +240,18 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
     for (j = 0; j < states; ++j)
       for (k = 0; k < states; ++k)
       {
-        tt_inv_eigenvecs[i * states * states + j * states + k] =
+        tt_inv_eigenvecs_buff[i * states * states + j * states + k] =
             inv_eigenvecs[i][k * states + j] * t_freqs[k];
       }
+    tt_inv_eigenvecs_ptr[i] = tt_inv_eigenvecs_buff + i * states * states; 
+  }
+  double **tt_inv_eigenvecs = tt_inv_eigenvecs_ptr;
+
+  /* hack to avoid numerical deviations */
+  if (inv) 
+  {
+    tt_inv_eigenvecs = eigenvecs;
+    eigenvecs = tt_inv_eigenvecs_ptr;
   }
 
   const double * t_clvp = clvp;
@@ -250,7 +259,7 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
   {
     for (i = 0; i < rate_cats; ++i)
     {
-      const double * ct_inv_eigenvecs = inv ? eigenvecs [i] : tt_inv_eigenvecs;
+      const double * ct_inv_eigenvecs = tt_inv_eigenvecs[i];
       __m256d v_lefterm[4];
       v_lefterm[0] = v_lefterm[1] = v_lefterm[2] = v_lefterm[3] = _mm256_setzero_pd ();
       __m256d v_eigen;
@@ -304,7 +313,7 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
     const double * t_clvc = &clvc[cid * span_padded];
     for (i = 0; i < rate_cats; ++i)
     {
-      t_eigenvecs = inv ? tt_inv_eigenvecs : eigenvecs[i];
+      t_eigenvecs = eigenvecs[i];
 
       const double * c_eigenvecs = t_eigenvecs;
 
@@ -359,7 +368,8 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
     }
   }
 
-  pll_aligned_free (tt_inv_eigenvecs);
+  pll_aligned_free (tt_inv_eigenvecs_buff);
+  free (tt_inv_eigenvecs_ptr);
 
   return PLL_SUCCESS;
 }
