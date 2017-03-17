@@ -35,6 +35,7 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv(unsigned int states,
                                            double ** freqs,
                                            double *sumtable,
                                            double * bclv_buffer,
+                                           unsigned int inv,
                                            unsigned int attrib)
 {
 #ifdef HAVE_AVX
@@ -52,7 +53,8 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv(unsigned int states,
                                                      inv_eigenvecs,
                                                      freqs,
                                                      sumtable,
-                                                     bclv_buffer);
+                                                     bclv_buffer,
+                                                     inv);
   }
 #endif
   return PLL_FAILURE;

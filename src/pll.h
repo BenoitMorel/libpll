@@ -476,6 +476,10 @@ PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
+PLL_EXPORT unsigned int pll_get_sites_number(pll_partition_t * partition,
+                                             unsigned int clv_index);
+PLL_EXPORT unsigned int pll_get_clv_size(pll_partition_t * partition,
+                                             unsigned int clv_index);
 /* functions in models.c */
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition,
@@ -842,6 +846,7 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv(unsigned int states,
                                            double ** freqs,
                                            double *sumtable,
                                            double * bclv_buffer,
+                                           unsigned int inv,
                                            unsigned int attrib);
 
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
@@ -1323,7 +1328,8 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
-                                           double * bclv_buffer);
+                                           double * bclv_buffer,
+                                           unsigned int inv);
 #endif
 
 /* functions in core_derivatives_avx2.c */

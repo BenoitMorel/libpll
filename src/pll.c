@@ -1282,3 +1282,20 @@ PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t siz
       calloc(size, sizeof(unsigned int));
 }
 
+PLL_EXPORT unsigned int pll_get_sites_number(pll_partition_t * partition,
+                                             unsigned int clv_index)
+{
+  unsigned int sites = partition->attributes & PLL_ATTRIB_SITES_REPEATS ?
+      partition->repeats->pernode_max_id[clv_index] : 0;
+  sites = sites ? sites : partition->sites;
+  sites += partition->asc_bias_alloc ? partition->states : 0;
+  return sites;
+}
+
+PLL_EXPORT unsigned int pll_get_clv_size(pll_partition_t * partition,
+                                             unsigned int clv_index)
+{
+  return pll_get_sites_number(partition, clv_index) * 
+    partition->states_padded * partition->rate_cats;
+}
+

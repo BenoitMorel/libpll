@@ -207,7 +207,8 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
-                                           double * bclv_buffer)
+                                           double * bclv_buffer,
+                                           unsigned int inv)
 {
   unsigned int i, j, k, n;
 
@@ -243,13 +244,13 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
             inv_eigenvecs[i][k * states + j] * t_freqs[k];
       }
   }
-  
+
   const double * t_clvp = clvp;
   for (n = 0; n < parent_max_id; n++)
   {
     for (i = 0; i < rate_cats; ++i)
     {
-      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
+      const double * ct_inv_eigenvecs = inv ? eigenvecs [i] : tt_inv_eigenvecs;
       __m256d v_lefterm[4];
       v_lefterm[0] = v_lefterm[1] = v_lefterm[2] = v_lefterm[3] = _mm256_setzero_pd ();
       __m256d v_eigen;
@@ -303,7 +304,7 @@ static int pll_core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
     const double * t_clvc = &clvc[cid * span_padded];
     for (i = 0; i < rate_cats; ++i)
     {
-      t_eigenvecs = eigenvecs[i];
+      t_eigenvecs = inv ? tt_inv_eigenvecs : eigenvecs[i];
 
       const double * c_eigenvecs = t_eigenvecs;
 
@@ -375,7 +376,8 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
-                                           double * bclv_buffer)
+                                           double * bclv_buffer,
+                                           unsigned int inv)
 {
   if (states == 4) 
   {
@@ -390,7 +392,8 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
                                                          inv_eigenvecs,
                                                          freqs,
                                                          sumtable,
-                                                         bclv_buffer);
+                                                         bclv_buffer,
+                                                         inv);
 
   }
   unsigned int i, j, k, n;
@@ -400,7 +403,8 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
 
   const double * t_clvp = clvp;
   double * t_freqs;
-  
+ 
+
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
   unsigned int span_padded = rate_cats * states_padded;
 
@@ -439,9 +443,15 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_bclv_avx(unsigned int states,
       for (k = 0; k < states; ++k)
       {
         tt_inv_eigenvecs[i * states_padded * states_padded + j * states_padded
-            + k] = inv_eigenvecs[i][k * states + j] * t_freqs[k];
+            + k] = 
+            inv ?
+            (eigenvecs[i][j * states + k]):
+            (inv_eigenvecs[i][k * states + j] * t_freqs[k]);
         tt_eigenvecs[i * states_padded * states_padded + j * states_padded
-            + k] = eigenvecs[i][j * states + k];
+            + k] = 
+            inv ?
+            (inv_eigenvecs[i][k * states + j] * t_freqs[k]) :
+            (eigenvecs[i][j * states + k]);
       }
   }
   double *lbclv = bclv_buffer; 

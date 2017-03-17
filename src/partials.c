@@ -137,12 +137,8 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int * parent_scaler;
   unsigned int * left_scaler;
   unsigned int * right_scaler;
-  unsigned int sites = partition->sites;
-  unsigned int additional_sites = partition->asc_bias_alloc 
-    ? partition->states : 0;
+  unsigned int sites = pll_get_sites_number(partition, op->parent_clv_index);
 
-  /* ascertaiment bias correction */
-  sites += additional_sites;
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -165,37 +161,31 @@ static void case_innerinner(pll_partition_t * partition,
       && (partition->repeats->pernode_max_id[op->child1_clv_index]
          ||  partition->repeats->pernode_max_id[op->child2_clv_index]))
   {
-    unsigned int identifiers = 
-      partition->repeats->pernode_max_id[op->parent_clv_index];
     const unsigned int * parent_id_site = 0x0;
     const unsigned int * left_site_id = 0x0;
     const unsigned int * right_site_id = 0x0;
     double * bclv_buffer = partition->repeats ? partition->repeats->bclv_buffer : NULL;
-    unsigned int left_sites = partition->repeats->pernode_max_id[op->child1_clv_index];
-    unsigned int right_sites = partition->repeats->pernode_max_id[op->child2_clv_index];
-    identifiers = identifiers ? identifiers : partition->sites;
+    unsigned int left_sites = pll_get_sites_number(partition, op->child1_clv_index);
+    unsigned int right_sites = pll_get_sites_number(partition, op->child2_clv_index);
     if (partition->repeats->pernode_max_id[op->parent_clv_index])
       parent_id_site = partition->repeats->pernode_id_site[op->parent_clv_index];
     if (partition->repeats->pernode_max_id[op->child1_clv_index])
       left_site_id = partition->repeats->pernode_site_id[op->child1_clv_index];
     if (partition->repeats->pernode_max_id[op->child2_clv_index])
       right_site_id = partition->repeats->pernode_site_id[op->child2_clv_index];
-    identifiers += additional_sites;
-    left_sites = left_sites ? left_sites : partition->sites;
-    right_sites = right_sites ? right_sites : partition->sites;
     unsigned int inv = left_sites < right_sites;
       pll_core_update_partial_repeats(partition->states,
-                                  identifiers,
+                                  sites,
                                   partition->rate_cats,
                                   parent_clv,
                                   parent_id_site,
                                   parent_scaler,
                                   inv  ? left_clv : right_clv,
                                   inv  ? left_site_id : right_site_id,
-                                  (inv  ? left_sites : right_sites) + additional_sites,
+                                  inv  ? left_sites : right_sites,
                                   !inv ? left_clv : right_clv,
                                   !inv ? left_site_id : right_site_id,
-                                  (!inv ? left_sites : right_sites) + additional_sites,
+                                  !inv ? left_sites : right_sites,
                                   inv  ? left_matrix : right_matrix,
                                   !inv ? left_matrix : right_matrix,
                                   inv ? left_scaler : right_scaler,
