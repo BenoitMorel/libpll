@@ -35,7 +35,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               double * persite_lnl,
                                               unsigned int attrib)
 {
-  unsigned int i,j,k,m = 0;
+  unsigned int i,j,k;
   double logl = 0;
   const double * freqs = NULL;
 
@@ -200,7 +200,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[i] = site_lk;
 
     logl += site_lk;
   }
@@ -259,7 +259,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                           double * persite_lnl,
                                           unsigned int attrib)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
 
   const double * clvp = parent_clv;
@@ -385,7 +385,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
 
@@ -413,7 +413,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                       double * persite_lnl,
                                       unsigned int attrib)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
 
   const double * clvp = parent_clv;
@@ -645,7 +645,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
 
@@ -738,7 +738,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       double * persite_lnl,
                                       unsigned int attrib)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
 
   const double * clvp = parent_clv;
@@ -938,7 +938,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }

@@ -35,7 +35,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
                                                   const unsigned int * freqs_indices,
                                                   double * persite_lnl)
 {
-  unsigned int i,j,k,m = 0;
+  unsigned int i,j,k;
   double logl = 0;
   double prop_invar = 0;
 
@@ -103,7 +103,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = term;
+      persite_lnl[i] = term;
 
     logl += term;
   }
@@ -123,7 +123,7 @@ double pll_core_root_loglikelihood_4x4_avx(unsigned int sites,
                                            const unsigned int * freqs_indices,
                                            double * persite_lnl)
 {
-  unsigned int i,j,m = 0;
+  unsigned int i,j;
   double logl = 0;
   double prop_invar = 0;
 
@@ -181,7 +181,7 @@ double pll_core_root_loglikelihood_4x4_avx(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = term;
+      persite_lnl[i] = term;
 
     logl += term;
   }
@@ -294,7 +294,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                               double * persite_lnl,
                                               unsigned int attrib)
 {
-  unsigned int n,i,m = 0;
+  unsigned int n,i;
   double logl = 0;
   double prop_invar = 0;
 
@@ -477,7 +477,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -506,7 +506,7 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
                                                 const unsigned int * freqs_indices,
                                                 double * persite_lnl)
 {
-  unsigned int n,i,j,m = 0;
+  unsigned int n,i,j,m;
   double logl = 0;
   double prop_invar = 0;
 
@@ -674,7 +674,7 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                           const unsigned int * freqs_indices,
                                           double * persite_lnl)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
   double prop_invar = 0;
 
@@ -819,7 +819,7 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -843,7 +843,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
                                           const unsigned int * freqs_indices,
                                           double * persite_lnl)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
   double prop_invar = 0;
 
@@ -979,7 +979,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -1305,7 +1305,7 @@ double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,
                                               double * persite_lnl,
                                               unsigned int attrib)
 {
-  unsigned int n,i,m = 0;
+  unsigned int n,i;
   double logl = 0;
   double prop_invar = 0;
 
@@ -1461,7 +1461,7 @@ double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
