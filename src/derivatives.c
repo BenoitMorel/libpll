@@ -137,6 +137,23 @@ static int sumtable_innerinner(pll_partition_t * partition,
     freqs[i] = partition->frequencies[params_indices[i]];
   }
 
+  /*
+  unsigned int repeatsleft = partition->repeats &&  partition->repeats->pernode_max_id[parent_clv_index];
+  unsigned int repeatsright = partition->repeats &&  partition->repeats->pernode_max_id[child_clv_index];
+  unsigned int span = partition->states_padded * partition->rate_cats;
+  for (i = 0; i < partition->sites; ++i) {
+    unsigned int posleft = repeatsleft ? partition->repeats->pernode_site_id[parent_clv_index][i] - 1: i;
+    unsigned int posright = repeatsright ? partition->repeats->pernode_site_id[child_clv_index][i] - 1 : i;
+    unsigned int j;
+    for (j = 0; j < span; ++j) {
+      fprintf(stderr, "(l,%0.17f) (r,%0.17f) ", 
+          partition->clv[parent_clv_index][posleft * span + j],
+          partition->clv[child_clv_index][posright * span + j]);
+    }
+  }
+  fprintf(stderr, "\n");
+`*/
+
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && 
       (partition->repeats->pernode_max_id[parent_clv_index] 
        || partition->repeats->pernode_max_id[child_clv_index])) 
@@ -169,6 +186,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
                           freqs,
                           sumtable,
                           partition->repeats->bclv_buffer,
+                          inv,
                           partition->attributes);
   }
   else 
