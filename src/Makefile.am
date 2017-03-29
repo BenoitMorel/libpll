@@ -4,7 +4,6 @@ AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3 -fPIC
 
 LIBPLLHEADERS=\
 pll.h
-
 AM_YFLAGS = -d -p `${SED} -n 's/.*_\(.*\)/pll_\1_/p' <<<"$*"`
 AM_LFLAGS = -P `${SED} -n 's/.*_\(.*\)/pll_\1_/p' <<<"$*"` -o lex.yy.c
 
@@ -47,6 +46,15 @@ AVXFLAGS=-mavx
 SSEFLAGS=-msse3
 
 SIMD_KERNELS=
+
+SIMD_KERNELS+=libcuda.la
+libcuda_la_SOURCES=\
+	cuda_utils.cu\
+	partials_cuda.cu
+libcuda_la_AR = $(NVCC) -arch=sm_20 -lib -o
+
+.cu.lo:
+	$(LIBTOOL) --tag=CC --mode=compile /home/benoit/github/libpll/cudahack.sh  -c $<
 
 if HAVE_AVX2
  SIMD_KERNELS+=libsimd_avx2.la

@@ -129,6 +129,12 @@ static void case_tipinner(pll_partition_t * partition,
 static void case_innerinner(pll_partition_t * partition,
                             const pll_operation_t * op)
 {
+  if (partition->attributes & PLL_ATTRIB_ARCH_CUDA)
+  {
+    pll_update_partial_ii_cuda(partition, op);
+    return;
+  }
+  
   const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
   const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
   double * parent_clv = partition->clv[op->parent_clv_index];

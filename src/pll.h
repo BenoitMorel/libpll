@@ -26,7 +26,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+
+#ifndef PLLCUDA
 #include <x86intrin.h>
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -83,6 +86,7 @@
 #define PLL_ATTRIB_ARCH_MASK         0xF
 
 #define PLL_ATTRIB_PATTERN_TIP    (1 << 4)
+#define PLL_ATTRIB_ARCH_CUDA       (1 << 11)
 
 /* ascertainment bias correction */
 #define PLL_ATTRIB_AB_LEWIS        (1 << 5)
@@ -141,6 +145,15 @@
 
 /* structures and data types */
 
+typedef struct pll_cuda
+{
+  double **clv;
+  unsigned int **scale_buffer;
+
+  double *lmatrix_buffer;
+  double *rmatrix_buffer;
+} pll_cuda_t;
+
 typedef struct pll_partition
 {
   unsigned int tips;
@@ -185,6 +198,8 @@ typedef struct pll_partition
 
   /* ascertainment bias correction */
   int asc_bias_alloc;
+  
+  pll_cuda_t *cuda;
 } pll_partition_t;
 
 /* Structure for driving likelihood operations */
@@ -1735,6 +1750,18 @@ PLL_EXPORT extern int pll_initstate_r(unsigned int __seed,
 
 PLL_EXPORT extern int pll_setstate_r(char * __statebuf,
                                      struct pll_random_data * __buf);
+
+/* functions in utils_cuda.cu */
+void pll_print_cuda_info();
+void * pll_cuda_malloc(size_t size);
+void * pll_cuda_calloc(size_t size);
+int pll_cuda_memcpy_to_gpu(void *dest, const void *src, size_t n);
+int pll_cuda_memcpy_to_cpu(void *dest, const void *src, size_t n);
+
+/*functions in partials_cuda.cu*/
+ void pll_update_partial_ii_cuda(pll_partition_t * partition,
+                            const pll_operation_t * op);
+
 
 #ifdef __cplusplus
 } /* extern "C" */
