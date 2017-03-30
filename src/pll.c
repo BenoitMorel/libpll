@@ -804,6 +804,30 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       return PLL_FAILURE;
     }
   }
+#ifdef HAVE_CUDA
+  if (attributes & PLL_ATTRIB_ARCH_CUDA) 
+  {
+    pll_cuda_t *cuda = malloc(sizeof(pll_cuda_t));
+    partition->cuda = cuda;
+    cuda->clv = calloc(partition->tips + partition->clv_buffers, sizeof(void *));
+    for (i = 0; i < partition->tips + partition->clv_buffers; ++i)
+    {
+      cuda->clv[i] = pll_cuda_malloc(sites_alloc * states_padded *
+        rate_cats * sizeof(double));
+    }
+    cuda->scale_buffer = calloc(partition->scale_buffers, sizeof(void *));
+    size_t scaler_size = (attributes & PLL_ATTRIB_RATE_SCALERS) ?
+                                                             sites_alloc * rate_cats : sites_alloc;
+    for (i = 0; i < partition->scale_buffers; ++i) 
+    {
+      cuda->scale_buffer[i] = pll_cuda_calloc(scaler_size * sizeof(unsigned int));
+    }
+    cuda->lmatrix_buffer = pll_cuda_malloc(states * states_padded * rate_cats * sizeof(double));
+    cuda->rmatrix_buffer = pll_cuda_malloc(states * states_padded * rate_cats * sizeof(double));
+  }
+#endif
+
+
 
   return partition;
 }
@@ -981,6 +1005,13 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
   }
   else
     rc = set_tipclv(partition, tip_index, map, sequence);
+#ifdef HAVE_CUDA
+  if (partition->attributes & PLL_ATTRIB_ARCH_CUDA) 
+  {
+    unsigned int size = partition->sites * partition->states_padded * partition->rate_cats * sizeof(double);
+    pll_cuda_memcpy_to_gpu(partition->cuda->clv[tip_index], partition->clv[tip_index], size);
+  }
+#endif
 
   return rc;
 }
@@ -1027,6 +1058,16 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
       }
     }
   }
+#ifdef HAVE_CUDA
+  if (partition->attributes & PLL_ATTRIB_ARCH_CUDA) 
+  {
+    unsigned int sites = partition->asc_bias_alloc ?
+      partition->sites + partition->states : partition->sites;
+    pll_cuda_memcpy_to_gpu(partition->cuda->clv[tip_index],
+        partition->clv[tip_index],
+        sites * partition->states_padded * partition->rate_cats);
+  }
+#endif
 
   return PLL_SUCCESS;
 }

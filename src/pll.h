@@ -27,6 +27,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#define HAVE_CUDA
+
 #ifndef PLLCUDA
 #include <x86intrin.h>
 #endif

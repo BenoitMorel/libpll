@@ -105,6 +105,7 @@ __global__ void cu_update_partial(
  PLL_EXPORT void pll_update_partial_ii_cuda(pll_partition_t * partition,
                             const pll_operation_t * op)
 {
+  
   // cpu variables
   const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
   const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
@@ -127,9 +128,11 @@ __global__ void cu_update_partial(
   // call kernel
   unsigned int block_size = 512;
   unsigned int grid_size = sites / block_size + 1;
+  
 
   pll_cuda_memcpy_to_gpu(cuda_left_matrix, left_matrix, partition->states * partition->states * partition->rate_cats * sizeof(double));
   pll_cuda_memcpy_to_gpu(cuda_right_matrix, right_matrix, partition->states * partition->states * partition->rate_cats * sizeof(double));
+
   cu_update_partial << <grid_size, block_size >> > (
       partition->states,
       sites,
@@ -143,12 +146,7 @@ __global__ void cu_update_partial(
       cuda_left_matrix,
       cuda_right_matrix
       );
-  fprintf(stderr, "after kernel\n");
   cuda_check(cudaGetLastError(), "pll_update_partial_ii_cuda");
   // copy data to cpu (to rm ?)
   pll_cuda_memcpy_to_cpu(parent_clv, cuda_parent_clv, clv_size * sizeof(double)); 
-  for (unsigned int i = 0; i < clv_size; ++i)
-  {
-    //fprintf(stderr,"%f-", parent_clv[i]);
-  }
 }

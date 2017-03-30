@@ -47,11 +47,11 @@ SSEFLAGS=-msse3
 
 SIMD_KERNELS=
 
-SIMD_KERNELS+=libcuda.la
-libcuda_la_SOURCES=\
+SIMD_KERNELS+=libpllcuda.la
+libpllcuda_la_SOURCES=\
 	cuda_utils.cu\
 	partials_cuda.cu
-libcuda_la_AR = $(NVCC) -arch=sm_20 -lib -o
+libpllcuda_la_AR = $(NVCC) -arch=sm_20 -g -lib -o
 
 .cu.lo:
 	$(LIBTOOL) --tag=CC --mode=compile /home/benoit/github/libpll/cudahack.sh  -c $<
