@@ -27,7 +27,6 @@ int main(int argc, char * argv[])
   pll_partition_t * partition;
   pll_operation_t * operations;
   double alpha = 1.0;
-  caca();
   /* create the PLL partition instance */
   partition = pll_partition_create(4,       /* How many tip sequences do we have */
                                    2,       /* How many extra CLV buffers (apart from the tip sequences) should we allocate */

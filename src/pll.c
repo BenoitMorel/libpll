@@ -807,6 +807,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
 #ifdef HAVE_CUDA
   if (attributes & PLL_ATTRIB_ARCH_CUDA) 
   {
+    fprintf(stderr, "WITH CUDA\n");
     pll_cuda_t *cuda = malloc(sizeof(pll_cuda_t));
     partition->cuda = cuda;
     cuda->clv = calloc(partition->tips + partition->clv_buffers, sizeof(void *));

@@ -54,7 +54,7 @@ libpllcuda_la_SOURCES=\
 libpllcuda_la_AR = $(NVCC) -arch=sm_20 -g -lib -o
 
 .cu.lo:
-	$(LIBTOOL) --tag=CC --mode=compile /home/benoit/github/libpll/cudahack.sh  -c $<
+	$(LIBTOOL) --tag=CC --mode=compile ../cudahack.sh  -c $<
 
 if HAVE_AVX2
  SIMD_KERNELS+=libsimd_avx2.la
