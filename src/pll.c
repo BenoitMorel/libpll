@@ -114,6 +114,18 @@ static void dealloc_partition_data(pll_partition_t * partition)
       free(repeats->pernode_site_id[i]);
       free(repeats->pernode_id_site[i]);
     }
+    for (i = 0; i < repeats->pool_full_idx; ++i) {
+      pll_aligned_free(repeats->pool_full[i]);
+    }
+    for (i = 0; i < repeats->pool_half_idx; ++i) {
+      pll_aligned_free(repeats->pool_half[i]);
+    }
+    for (i = 0; i < repeats->pool_small_idx; ++i) {
+      pll_aligned_free(repeats->pool_small[i]);
+    }
+    free(repeats->pool_full);
+    free(repeats->pool_half);
+    free(repeats->pool_small);
     free(repeats->pernode_site_id);
     free(repeats->pernode_id_site);
     free(repeats->pernode_max_id);
@@ -149,6 +161,26 @@ PLL_EXPORT void pll_aligned_free(void * ptr)
 #else
   free(ptr);
 #endif
+}
+
+// result in bytes
+PLL_EXPORT size_t pll_get_clv_allocated_size(pll_partition_t *partition)
+{
+  if (!partition)
+    return 0;
+  unsigned int site_size = partition->states * partition->rate_cats * sizeof(double);
+  if (!partition->repeats) {
+    return partition->clv_buffers * partition->sites * site_size;
+  }
+  return partition->repeats->total_allocated * site_size;
+  /*unsigned int res = 0;
+  for (unsigned int i = partition->tips; i < partition->tips + partition->clv_buffers;++i) {
+    unsigned int sites = partition->repeats->pernode_allocated_clvs[i];
+    sites = sites ? sites : partition->sites;
+    res += sites * site_size; 
+  }
+  return res;
+  */
 }
 
 static int update_charmap(pll_partition_t * partition, const unsigned int * map)
@@ -552,7 +584,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   {
     /* if tip pattern precomputation is enabled, then do not allocate CLV space
        for the tip nodes */
-    int start = (partition->attributes & PLL_ATTRIB_PATTERN_TIP) ?
+    int start = ((partition->attributes & PLL_ATTRIB_PATTERN_TIP)) /*||
+        (partition->attributes & PLL_ATTRIB_SITES_REPEATS)) */?
                     partition->tips : 0;
 
     for (i = start; i < partition->tips + partition->clv_buffers; ++i)
@@ -829,7 +862,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
   /* scales will be allocated later if we use site repeats */
-  if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
+  //if (!(PLL_ATTRIB_SITES_REPEATS & partition->attributes)) 
   {
     for (i = 0; i < partition->scale_buffers; ++i)
     {
@@ -901,6 +934,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     repeats->id_site_buffer = malloc(sites_alloc * sizeof(unsigned int));
     repeats->bclv_buffer = pll_aligned_alloc(sites_alloc * rate_cats * states_padded
         * sizeof(double), partition->alignment);
+    repeats->total_allocated = 0;
     if (!(repeats->pernode_max_id && repeats->lookup_buffer
          && repeats->pernode_allocated_clvs && repeats->bclv_buffer
          && repeats->toclean_buffer && repeats->id_site_buffer))
@@ -912,6 +946,12 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
             "Unable to allocate enough memory for one of the repeats buffer.");
       return PLL_FAILURE;
     }
+   repeats->pool_full = calloc(nodes_number, sizeof(double*));
+   repeats->pool_half = calloc(nodes_number, sizeof(double*));
+   repeats->pool_small = calloc(nodes_number, sizeof(double*));
+   repeats->pool_full_idx = 0;
+   repeats->pool_half_idx = 0;
+   repeats->pool_small_idx = 0;
   }
   return partition;
 }

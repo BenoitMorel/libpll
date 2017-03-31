@@ -209,21 +209,94 @@ static void case_innerinner(pll_partition_t * partition,
                              partition->attributes);
 }
 
+static double *get_clv_buffer_1(pll_partition_t *partition,
+    unsigned int sites_to_alloc)
+{
+  return pll_aligned_alloc(
+      sites_to_alloc * partition->states_padded 
+      * partition->rate_cats * sizeof(double), 
+      partition->alignment);
+}
+
+static void release_clv_buffer_1(pll_partition_t *partition,
+    double *clv,
+    unsigned int allocated_sites)
+{
+  pll_aligned_free(clv);
+}
+
+static double *get_clv_buffer_2(pll_partition_t *partition,
+    unsigned int sites_to_alloc)
+{
+  pll_repeats_t *rep = partition->repeats;
+  unsigned int site_size = partition->states_padded 
+    * partition->rate_cats * sizeof(double);
+  double *res = 0;
+  if (sites_to_alloc < partition->sites / 10) {
+    if (rep->pool_small_idx) {
+      return rep->pool_small[--rep->pool_small_idx];
+    } else {
+      rep->total_allocated += partition->sites / 10;
+      return pll_aligned_alloc((partition->sites / 10) * site_size,
+          partition->alignment);
+    }
+  }
+  if (sites_to_alloc < partition->sites / 2) {
+    if (rep->pool_half_idx) {
+      return rep->pool_half[--rep->pool_half_idx];
+    } else {
+      rep->total_allocated += partition->sites / 2;
+      return pll_aligned_alloc((partition->sites / 2) * site_size,
+          partition->alignment);
+    }
+  }
+  if (rep->pool_full_idx) {
+    return rep->pool_full[--rep->pool_full_idx];
+  } else {
+    rep->total_allocated += partition->sites;
+    return pll_aligned_alloc(partition->sites * site_size,
+        partition->alignment);
+  }
+}
+
+static void release_clv_buffer_2(pll_partition_t *partition,
+    double *clv,
+    unsigned int allocated_sites)
+{
+  if (clv == 0) {
+    return;
+  }
+  pll_repeats_t *rep = partition->repeats;
+  if (allocated_sites < partition->sites / 10) 
+  {
+    rep->pool_small[rep->pool_small_idx++] = clv;
+  }
+  else if (allocated_sites < partition->sites / 2) 
+  {
+    rep->pool_half[rep->pool_half_idx++] = clv;
+  }
+  else
+  {
+    rep->pool_full[rep->pool_full_idx++] = clv;
+  }
+}
+
 static void reallocate_repeats(pll_partition_t * partition,
                               const pll_operation_t * op,
                               unsigned int sites_to_alloc)
 {
   pll_repeats_t * repeats = partition->repeats;
   unsigned int parent = op->parent_clv_index;
+  unsigned int previous_sites_alloc = repeats->pernode_allocated_clvs[parent]; 
   repeats->pernode_allocated_clvs[parent] = sites_to_alloc; 
   int scaler_index = op->parent_scaler_index;
   unsigned int ** id_site = repeats->pernode_id_site;
   // reallocate clvs
-  pll_aligned_free(partition->clv[parent]);  
-  partition->clv[parent] = pll_aligned_alloc(
-      sites_to_alloc * partition->states_padded 
-      * partition->rate_cats * sizeof(double), 
-      partition->alignment);
+  release_clv_buffer_2(partition, 
+      partition->clv[parent],
+      previous_sites_alloc);  
+  partition->clv[parent] = get_clv_buffer_2(partition, 
+      sites_to_alloc);
   if (!partition->clv[parent]) 
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -232,17 +305,20 @@ static void reallocate_repeats(pll_partition_t * partition,
              "Unable to allocate enough memory for repeats structure.");
   }
   // reallocate scales
+  /*
   if (PLL_SCALE_BUFFER_NONE != scaler_index) 
   { 
     free(partition->scale_buffer[scaler_index]);
     partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, 
         sizeof(unsigned int));
   }
+  */
   // reallocate id to site lookup  
-  free(id_site[parent]);
+  /*free(id_site[parent]);
   id_site[parent] = malloc(sites_to_alloc * sizeof(unsigned int));
   // avoid valgrind errors
   memset(partition->clv[parent], 0, sites_to_alloc);
+  */
 }
 
 
@@ -307,9 +383,10 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
     sites_to_alloc = curr_id + additional_sites;
   }
   
+#ifndef PLL_REPEATS_FULL_ALLOCATE
   if (sites_to_alloc != repeats->pernode_allocated_clvs[parent]) 
     reallocate_repeats(partition, op, sites_to_alloc);
-
+#endif
   // set id to site lookups
   for (s = 0; s < curr_id; ++s) 
   {

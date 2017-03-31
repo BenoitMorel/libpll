@@ -162,6 +162,14 @@ typedef struct pll_repeats
   unsigned int * id_site_buffer; 
   double * bclv_buffer;
   unsigned int lookup_buffer_size;
+
+  double **pool_full;
+  double **pool_half;
+  double **pool_small;
+  unsigned int pool_full_idx;
+  unsigned int pool_half_idx;
+  unsigned int pool_small_idx;
+  size_t total_allocated;
 } pll_repeats_t;
 
 typedef struct pll_partition
@@ -439,6 +447,8 @@ extern "C" {
 #endif
 
 /* functions in pll.c */
+
+PLL_EXPORT size_t pll_get_clv_allocated_size(pll_partition_t *partition);
 
 PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int clv_buffers,
