@@ -153,7 +153,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
   }
   fprintf(stderr, "\n");
 `*/
-
+    
   if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && 
       (partition->repeats->pernode_max_id[parent_clv_index] 
        || partition->repeats->pernode_max_id[child_clv_index])) 

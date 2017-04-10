@@ -271,9 +271,9 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   unsigned int s;
 
   // in case site repeats is activated but not used for this node
-  if (!min_size || repeats->lookup_buffer_size <= min_size
-      || repeats->pernode_max_id[left] > partition->sites / 2
-      || repeats->pernode_max_id[right] > partition->sites / 2)
+  if (!min_size || (repeats->lookup_buffer_size <= min_size)
+      || (repeats->pernode_max_id[left] > (partition->sites / 2))
+      || (repeats->pernode_max_id[right] > (partition->sites / 2)))
   {
     sites_to_alloc = partition->sites + additional_sites;
     repeats->pernode_max_id[parent] = 0;
@@ -306,9 +306,17 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
       repeats->perscale_max_id[op->parent_scaler_index] = curr_id;
     sites_to_alloc = curr_id + additional_sites;
   }
-  
+
   if (sites_to_alloc != repeats->pernode_allocated_clvs[parent]) 
     reallocate_repeats(partition, op, sites_to_alloc);
+
+  // there is no repeats. Set pernode_max_id to 0
+  // to force the core functions not to use repeats
+  if (sites_to_alloc >= partition->sites + additional_sites) {
+    repeats->pernode_max_id[parent] = 0;
+    if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
+      repeats->perscale_max_id[op->parent_scaler_index] = 0;
+  }
 
   // set id to site lookups
   for (s = 0; s < curr_id; ++s) 
