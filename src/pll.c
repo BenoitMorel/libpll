@@ -423,6 +423,12 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   unsigned int i;
   unsigned int sites_alloc;
 
+  /* disable repeats if there are to few sites */
+  if (sites < 16 && (attributes & PLL_ATTRIB_SITES_REPEATS)) 
+  {
+    attributes &= ~PLL_ATTRIB_SITES_REPEATS;
+  }
+
   /* make sure that multiple ARCH were not specified */
   if (__builtin_popcount(attributes & PLL_ATTRIB_ARCH_MASK) > 1)
   {
