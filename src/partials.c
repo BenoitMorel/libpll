@@ -335,6 +335,15 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
                                     unsigned int count)
 {
+  pll_update_partials_rep(partition, operations, count, 1);
+}
+
+
+PLL_EXPORT void pll_update_partials_rep(pll_partition_t * partition,
+                                    const pll_operation_t * operations,
+                                    unsigned int count,
+                                    unsigned int update_repeats)
+{
   unsigned int i;
   const pll_operation_t * op;
 
@@ -342,7 +351,7 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
   {
     op = &(operations[i]);
 
-    if (partition->attributes & PLL_ATTRIB_SITES_REPEATS) 
+    if (partition->attributes & PLL_ATTRIB_SITES_REPEATS && update_repeats) 
       pll_update_repeats(partition, op);
 
     if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
