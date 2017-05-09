@@ -619,6 +619,11 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   double * d_f,
                                                   double * dd_f);
 
+PLL_EXPORT void pll_reallocate_repeats(pll_partition_t * partition,
+                              unsigned int parent,
+                              int scaler_index,
+                              unsigned int sites_to_alloc);
+
 /* functions in gamma.c */
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha,

@@ -209,14 +209,13 @@ static void case_innerinner(pll_partition_t * partition,
                              partition->attributes);
 }
 
-static void reallocate_repeats(pll_partition_t * partition,
-                              const pll_operation_t * op,
+PLL_EXPORT void pll_reallocate_repeats(pll_partition_t * partition,
+                              unsigned int parent,
+                              int scaler_index,
                               unsigned int sites_to_alloc)
 {
   pll_repeats_t * repeats = partition->repeats;
-  unsigned int parent = op->parent_clv_index;
   repeats->pernode_allocated_clvs[parent] = sites_to_alloc; 
-  int scaler_index = op->parent_scaler_index;
   unsigned int ** id_site = repeats->pernode_id_site;
   // reallocate clvs
   pll_aligned_free(partition->clv[parent]);  
@@ -308,7 +307,10 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   }
 
   if (sites_to_alloc != repeats->pernode_allocated_clvs[parent]) 
-    reallocate_repeats(partition, op, sites_to_alloc);
+    pll_reallocate_repeats( partition, 
+                            op->parent_clv_index, 
+                            op->parent_scaler_index, 
+                            sites_to_alloc);
 
   // there is no repeats. Set pernode_max_id to 0
   // to force the core functions not to use repeats
