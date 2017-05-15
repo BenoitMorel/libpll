@@ -23,6 +23,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include <x86intrin.h>
@@ -48,11 +49,15 @@
 #define PLL_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define PLL_MAX(a,b) ((a) > (b) ? (a) : (b))
 #define PLL_SWAP(x,y) do { __typeof__ (x) _t = x; x = y; y = _t; } while(0)
+#define PLL_STAT(x) (pll_hardware && pll_hardware->x)
 
 /* constants */
 
 #define PLL_FAILURE  0
 #define PLL_SUCCESS  1
+
+#define PLL_FALSE  0
+#define PLL_TRUE   1
 
 #define PLL_ALIGNMENT_CPU   8
 #define PLL_ALIGNMENT_SSE  16
@@ -67,6 +72,11 @@
 #define PLL_SCALE_FACTOR_SQRT 340282366920938463463374607431768211456.0 /* 2**128 */
 #define PLL_SCALE_THRESHOLD_SQRT (1.0/PLL_SCALE_FACTOR_SQRT)
 #define PLL_SCALE_BUFFER_NONE -1
+
+/* in per-rate scaling mode, maximum difference between scalers
+ * please see https://github.com/xflouris/libpll/issues/44  */
+#define PLL_SCALE_RATE_MAXDIFF 4
+
 #define PLL_MISC_EPSILON 1e-8
 #define PLL_ONE_EPSILON 1e-15
 #define PLL_ONE_MIN (1-PLL_ONE_EPSILON)
@@ -104,6 +114,9 @@
 #define PLL_UTREE_MOVE_NNI_LEFT             1
 #define PLL_UTREE_MOVE_NNI_RIGHT            2
 
+#define PLL_TREE_TRAVERSE_POSTORDER         1
+#define PLL_TREE_TRAVERSE_PREORDER          2
+
 /* error codes */
 
 #define PLL_ERROR_FILE_OPEN                100
@@ -113,26 +126,30 @@
 #define PLL_ERROR_FASTA_UNPRINTABLECHAR    104
 #define PLL_ERROR_FASTA_INVALIDHEADER      105
 #define PLL_ERROR_PHYLIP_SYNTAX            106
-#define PLL_ERROR_NEWICK_SYNTAX            107
-#define PLL_ERROR_MEM_ALLOC                108
-#define PLL_ERROR_PARAM_INVALID            109
-#define PLL_ERROR_TIPDATA_ILLEGALSTATE     110
-#define PLL_ERROR_TIPDATA_ILLEGALFUNCTION  111
-#define PLL_ERROR_TREE_CONVERSION          112
-#define PLL_ERROR_INVAR_INCOMPAT           113
-#define PLL_ERROR_INVAR_PROPORTION         114
-#define PLL_ERROR_INVAR_PARAMINDEX         115
-#define PLL_ERROR_INVAR_NONEFOUND          116
-#define PLL_ERROR_AB_INVALIDMETHOD         117
-#define PLL_ERROR_AB_NOSUPPORT             118
-#define PLL_ERROR_SPR_TERMINALBRANCH       119
-#define PLL_ERROR_SPR_NOCHANGE             120
-#define PLL_ERROR_NNI_INVALIDMOVE          121
-#define PLL_ERROR_NNI_TERMINALBRANCH       122
-#define PLL_ERROR_STEPWISE_STRUCT          123
-#define PLL_ERROR_STEPWISE_TIPS            124
-#define PLL_ERROR_STEPWISE_UNSUPPORTED     125
-#define PLL_ERROR_EINVAL                   126
+#define PLL_ERROR_PHYLIP_LONGSEQ           107
+#define PLL_ERROR_PHYLIP_NONALIGNED        108
+#define PLL_ERROR_PHYLIP_ILLEGALCHAR       109
+#define PLL_ERROR_PHYLIP_UNPRINTABLECHAR   110
+#define PLL_ERROR_NEWICK_SYNTAX            111
+#define PLL_ERROR_MEM_ALLOC                112
+#define PLL_ERROR_PARAM_INVALID            113
+#define PLL_ERROR_TIPDATA_ILLEGALSTATE     114
+#define PLL_ERROR_TIPDATA_ILLEGALFUNCTION  115
+#define PLL_ERROR_TREE_CONVERSION          116
+#define PLL_ERROR_INVAR_INCOMPAT           117
+#define PLL_ERROR_INVAR_PROPORTION         118
+#define PLL_ERROR_INVAR_PARAMINDEX         119
+#define PLL_ERROR_INVAR_NONEFOUND          120
+#define PLL_ERROR_AB_INVALIDMETHOD         121
+#define PLL_ERROR_AB_NOSUPPORT             122
+#define PLL_ERROR_SPR_TERMINALBRANCH       123
+#define PLL_ERROR_SPR_NOCHANGE             124
+#define PLL_ERROR_NNI_INVALIDMOVE          125
+#define PLL_ERROR_NNI_TERMINALBRANCH       126
+#define PLL_ERROR_STEPWISE_STRUCT          127
+#define PLL_ERROR_STEPWISE_TIPS            128
+#define PLL_ERROR_STEPWISE_UNSUPPORTED     129
+#define PLL_ERROR_EINVAL                   130
 
 /* utree specific */
 
@@ -141,6 +158,10 @@
 #define PLL_UTREE_SHOW_CLV_INDEX         (1 << 2)
 #define PLL_UTREE_SHOW_SCALER_INDEX      (1 << 3)
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
+
+/* GAMMA discretization modes */
+#define PLL_GAMMA_RATES_MEAN             0
+#define PLL_GAMMA_RATES_MEDIAN           1
 
 /* structures and data types */
 
@@ -164,6 +185,24 @@ typedef struct pll_repeats
   double * bclv_buffer;
   unsigned int lookup_buffer_size;
 } pll_repeats_t;
+
+typedef struct pll_hardware_s
+{
+  /* cpu features */
+  int altivec_present;
+  int mmx_present;
+  int sse_present;
+  int sse2_present;
+  int sse3_present;
+  int ssse3_present;
+  int sse41_present;
+  int sse42_present;
+  int popcnt_present;
+  int avx_present;
+  int avx2_present;
+
+  /* TODO: add chip,core,mem info */
+} pll_hardware_t;
 
 typedef struct pll_partition
 {
@@ -214,6 +253,7 @@ typedef struct pll_partition
   pll_repeats_t *repeats;
 } pll_partition_t;
 
+
 /* Structure for driving likelihood operations */
 
 typedef struct pll_operation
@@ -261,9 +301,25 @@ typedef struct pll_fasta
   long stripped[256];
 } pll_fasta_t;
 
+/* Simple structure for handling PHYLIP parsing */
+typedef struct pll_phylip_s
+{
+  FILE * fp;
+  char * line;
+  size_t line_size;
+  size_t line_maxsize;
+  char buffer[PLL_LINEALLOC];
+  const unsigned int * chrstatus;
+  long no;
+  long filesize;
+  long lineno;
+  long stripped_count;
+  long stripped[256];
+} pll_phylip_t;
+
 /* Simple unrooted and rooted tree structure for parsing newick */
 
-typedef struct pll_utree
+typedef struct pll_unode_s
 {
   char * label;
   double length;
@@ -271,13 +327,23 @@ typedef struct pll_utree
   unsigned int clv_index;
   int scaler_index;
   unsigned int pmatrix_index;
-  struct pll_utree * next;
-  struct pll_utree * back;
+  struct pll_unode_s * next;
+  struct pll_unode_s * back;
 
   void * data;
+} pll_unode_t;
+
+typedef struct pll_utree_s
+{
+  unsigned int tip_count;
+  unsigned int inner_count;
+  unsigned int edge_count;
+
+  pll_unode_t ** nodes;
+
 } pll_utree_t;
 
-typedef struct pll_rtree
+typedef struct pll_rnode_s
 {
   char * label;
   double length;
@@ -285,11 +351,23 @@ typedef struct pll_rtree
   unsigned int clv_index;
   int scaler_index;
   unsigned int pmatrix_index;
-  struct pll_rtree * left;
-  struct pll_rtree * right;
-  struct pll_rtree * parent;
+  struct pll_rnode_s * left;
+  struct pll_rnode_s * right;
+  struct pll_rnode_s * parent;
 
   void * data;
+} pll_rnode_t;
+
+typedef struct pll_rtree_s
+{
+  unsigned int tip_count;
+  unsigned int inner_count;
+  unsigned int edge_count;
+
+  pll_rnode_t ** nodes;
+
+  pll_rnode_t * root;
+
 } pll_rtree_t;
 
 /* structures for handling topological rearrangement move rollbacks */
@@ -301,18 +379,18 @@ typedef struct pll_utree_rb_s
   {
     struct
     {
-      pll_utree_t * p;
-      pll_utree_t * r;
-      pll_utree_t * rb;
-      pll_utree_t * pnb;
-      pll_utree_t * pnnb;
+      pll_unode_t * p;
+      pll_unode_t * r;
+      pll_unode_t * rb;
+      pll_unode_t * pnb;
+      pll_unode_t * pnnb;
       double r_len;
       double pnb_len;
       double pnnb_len;
     } spr;
     struct
     {
-      pll_utree_t * p;
+      pll_unode_t * p;
       int nni_type;
     } nni;
   };
@@ -401,11 +479,13 @@ struct pll_random_data
 
 PLL_EXPORT extern __thread int pll_errno;
 PLL_EXPORT extern __thread char pll_errmsg[200];
+PLL_EXPORT extern pll_hardware_t * pll_hardware;
 
 PLL_EXPORT extern const unsigned int pll_map_bin[256];
 PLL_EXPORT extern const unsigned int pll_map_nt[256];
 PLL_EXPORT extern const unsigned int pll_map_aa[256];
 PLL_EXPORT extern const unsigned int pll_map_fasta[256];
+PLL_EXPORT extern const unsigned int pll_map_phylip[256];
 
 PLL_EXPORT extern const double pll_aa_rates_dayhoff[190];
 PLL_EXPORT extern const double pll_aa_rates_lg[190];
@@ -476,7 +556,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 
 PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
                                unsigned int tip_index,
-                               const double * clv);
+                               const double * clv,
+                               int padding);
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights);
@@ -623,15 +704,16 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha,
                                       unsigned int categories,
-                                      double * output_rates);
+                                      double * output_rates,
+                                      int rates_mode);
 
 /* functions in output.c */
 
-PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
+PLL_EXPORT void pll_show_pmatrix(const pll_partition_t * partition,
                                  unsigned int index,
                                  unsigned int float_precision);
 
-PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
+PLL_EXPORT void pll_show_clv(const pll_partition_t * partition,
                              unsigned int clv_index,
                              int scaler_index,
                              unsigned int float_precision);
@@ -647,7 +729,7 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
 
 PLL_EXPORT void pll_fasta_close(pll_fasta_t * fd);
 
-PLL_EXPORT long pll_fasta_getfilesize(pll_fasta_t * fd);
+PLL_EXPORT long pll_fasta_getfilesize(const pll_fasta_t * fd);
 
 PLL_EXPORT long pll_fasta_getfilepos(pll_fasta_t * fd);
 
@@ -655,47 +737,61 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 
 /* functions in parse_rtree.y */
 
-PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
-                                                unsigned int * tip_count);
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename);
 
-PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s,
-                                                       unsigned int * tip_count);
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s);
 
 PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
                                   void (*cb_destroy)(void *));
 
+PLL_EXPORT void pll_rtree_reset_template_indices(pll_rnode_t * node,
+                                                 unsigned int tip_count);
+
+PLL_EXPORT void pll_rtree_graph_destroy(pll_rnode_t * root,
+                                        void (*cb_destroy)(void *));
+
+PLL_EXPORT pll_rtree_t * pll_rtree_wraptree(pll_rnode_t * root,
+                                            unsigned int tip_count);
 /* functions in parse_utree.y */
 
-PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
-                                                unsigned int * tip_count);
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename);
 
-PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s,
-                                                       unsigned int * tip_count);
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s);
 
-PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * tree,
                                   void (*cb_destroy)(void *));
 
-PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
+PLL_EXPORT void pll_utree_reset_template_indices(pll_unode_t * node,
                                                  unsigned int tip_count);
+
+PLL_EXPORT void pll_utree_graph_destroy(pll_unode_t * root,
+                                        void (*cb_destroy)(void *));
+
+PLL_EXPORT pll_utree_t * pll_utree_wraptree(pll_unode_t * root,
+                                            unsigned int tip_count);
 
 /* functions in utree.c */
 
-PLL_EXPORT void pll_utree_show_ascii(const pll_utree_t * tree, int options);
+PLL_EXPORT void pll_utree_show_ascii(const pll_unode_t * tree, int options);
 
-PLL_EXPORT char * pll_utree_export_newick(const pll_utree_t * root);
+PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root,
+                                   char * (*cb_serialize)(const pll_unode_t *));
 
-PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
-                                  int (*cbtrav)(pll_utree_t *),
-                                  pll_utree_t ** outbuffer,
+PLL_EXPORT int pll_utree_traverse(pll_unode_t * root,
+                                  int traversal,
+                                  int (*cbtrav)(pll_unode_t *),
+                                  pll_unode_t ** outbuffer,
                                   unsigned int * trav_size);
 
+#if 0
 PLL_EXPORT unsigned int pll_utree_query_tipnodes(pll_utree_t * root,
                                                  pll_utree_t ** node_list);
 
 PLL_EXPORT unsigned int pll_utree_query_innernodes(pll_utree_t * root,
                                                    pll_utree_t ** node_list);
+#endif
 
-PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
+PLL_EXPORT void pll_utree_create_operations(pll_unode_t * const* trav_buffer,
                                             unsigned int trav_buffer_size,
                                             double * branches,
                                             unsigned int * pmatrix_indices,
@@ -703,41 +799,62 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count);
 
-PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root);
+PLL_EXPORT int pll_utree_check_integrity(const pll_utree_t * root);
 
-PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root);
-PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root);
-PLL_EXPORT int pll_utree_every(pll_utree_t * node,
-                               int (*cb)(pll_utree_t *));
-PLL_EXPORT void pll_utree_create_pars_buildops(pll_utree_t ** trav_buffer,
+PLL_EXPORT pll_unode_t * pll_utree_graph_clone(const pll_unode_t * root);
+
+PLL_EXPORT pll_utree_t * pll_utree_clone(const pll_utree_t * root);
+
+PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * tree);
+
+PLL_EXPORT int pll_utree_every(pll_utree_t * tree,
+                               int (*cb)(pll_unode_t *));
+
+PLL_EXPORT int pll_utree_every_const(const pll_utree_t * tree,
+                                     int (*cb)(const pll_unode_t *));
+
+PLL_EXPORT void pll_utree_create_pars_buildops(pll_unode_t * const* trav_buffer,
                                                unsigned int trav_buffer_size,
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count);
-/* functions in parse_phylip.y */
 
-PLL_EXPORT pll_msa_t * pll_phylip_parse_msa(const char * filename,
-                                            unsigned int * msa_count);
+/* functions in phylip.c */
 
 PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa);
 
+PLL_EXPORT pll_phylip_t * pll_phylip_open(const char * filename,
+                                          const unsigned int * map);
+
+PLL_EXPORT int pll_phylip_rewind(pll_phylip_t * fd);
+
+PLL_EXPORT void pll_phylip_close(pll_phylip_t * fd);
+
+PLL_EXPORT pll_msa_t * pll_phylip_parse_interleaved(pll_phylip_t * fd);
+
+PLL_EXPORT pll_msa_t * pll_phylip_parse_sequential(pll_phylip_t * fd);
+
 /* functions in rtree.c */
 
-PLL_EXPORT void pll_rtree_show_ascii(const pll_rtree_t * tree, int options);
+PLL_EXPORT void pll_rtree_show_ascii(const pll_rnode_t * root, int options);
 
-PLL_EXPORT char * pll_rtree_export_newick(const pll_rtree_t * root);
+PLL_EXPORT char * pll_rtree_export_newick(const pll_rnode_t * root,
+                                   char * (*cb_serialize)(const pll_rnode_t *));
 
-PLL_EXPORT int pll_rtree_traverse(pll_rtree_t * root,
-                                  int (*cbtrav)(pll_rtree_t *),
-                                  pll_rtree_t ** outbuffer,
+PLL_EXPORT int pll_rtree_traverse(pll_rnode_t * root,
+                                  int traversal,
+                                  int (*cbtrav)(pll_rnode_t *),
+                                  pll_rnode_t ** outbuffer,
                                   unsigned int * trav_size);
 
+#if 0
 PLL_EXPORT unsigned int pll_rtree_query_tipnodes(pll_rtree_t * root,
                                                  pll_rtree_t ** node_list);
 
 PLL_EXPORT unsigned int pll_rtree_query_innernodes(pll_rtree_t * root,
                                                    pll_rtree_t ** node_list);
+#endif
 
-PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
+PLL_EXPORT void pll_rtree_create_operations(pll_rnode_t * const* trav_buffer,
                                             unsigned int trav_buffer_size,
                                             double * branches,
                                             unsigned int * pmatrix_indices,
@@ -745,17 +862,19 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count);
 
+#if 0
 PLL_EXPORT int pll_rtree_traverse_preorder(pll_rtree_t * root,
                                            int (*cbtrav)(pll_rtree_t *),
                                            pll_rtree_t ** outbuffer,
                                            unsigned int * trav_size);
+#endif
 
-PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rtree_t ** trav_buffer,
+PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rnode_t * const* trav_buffer,
                                                unsigned int trav_buffer_size,
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count);
 
-PLL_EXPORT void pll_rtree_create_pars_recops(pll_rtree_t ** trav_buffer,
+PLL_EXPORT void pll_rtree_create_pars_recops(pll_rnode_t * const* trav_buffer,
                                              unsigned int trav_buffer_size,
                                              pll_pars_recop_t * ops,
                                              unsigned int * ops_count);
@@ -767,7 +886,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
                                        double * lookup,
                                        const double * left_matrix,
                                        const double * right_matrix,
-                                       unsigned int * tipmap,
+                                       const unsigned int * tipmap,
                                        unsigned int tipmap_size,
                                        unsigned int attrib);
 
@@ -840,7 +959,8 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
                                                unsigned int * parent_scaler,
                                                const unsigned char * left_tipchars,
                                                const unsigned char * right_tipchars,
-                                               const double * lookup);
+                                               const double * lookup,
+                                               unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
@@ -875,11 +995,12 @@ PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
                                                const unsigned char * left_tipchars,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
-                                               double ** freqs,
-                                               unsigned int * tipmap,
-                                               double *sumtable,
+                                               const unsigned int * parent_scaler,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
+                                               double * const * freqs,
+                                               const unsigned int * tipmap,
+                                               double * sumtable,
                                                unsigned int attrib);
 
 PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
@@ -889,10 +1010,10 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            const double * child_clv,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
-                                           double *sumtable,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
+                                           double * sumtable,
                                            unsigned int attrib);
 
 
@@ -902,12 +1023,12 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            const double * parent_clv,
                                            const unsigned char * left_tipchars,
                                            const unsigned int * parent_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
-                                           unsigned int * tipmap,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
+                                           const unsigned int * tipmap,
                                            unsigned int tipmap_size,
-                                           double *sumtable,
+                                           double * sumtable,
                                            unsigned int attrib);
 
 PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
@@ -920,9 +1041,9 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                const unsigned int * pattern_weights,
                                                double branch_length,
                                                const double * prop_invar,
-                                               double ** freqs,
+                                               double * const * freqs,
                                                const double * rates,
-                                               double ** eigenvals,
+                                               double * const * eigenvals,
                                                const double * sumtable,
                                                double * d_f,
                                                double * dd_f,
@@ -958,7 +1079,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                  const double * child_clv,
                                                  const unsigned int * child_scaler,
                                                  const double * pmatrix,
-                                                 double ** frequencies,
+                                                 double * const * frequencies,
                                                  const double * rate_weights,
                                                  const unsigned int * pattern_weights,
                                                  const double * invar_proportion,
@@ -976,7 +1097,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                  const unsigned int * tipmap,
                                                  unsigned int tipmap_size,
                                                  const double * pmatrix,
-                                                 double ** frequencies,
+                                                 double * const * frequencies,
                                                  const double * rate_weights,
                                                  const unsigned int * pattern_weights,
                                                  const double * invar_proportion,
@@ -991,7 +1112,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                                      const unsigned int * parent_scaler,
                                                      const unsigned char * tipchars,
                                                      const double * pmatrix,
-                                                     double ** frequencies,
+                                                     double * const * frequencies,
                                                      const double * rate_weights,
                                                      const unsigned int * pattern_weights,
                                                      const double * invar_proportion,
@@ -1005,7 +1126,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               unsigned int rate_cats,
                                               const double * clv,
                                               const unsigned int * scaler,
-                                              double ** frequencies,
+                                              double * const * frequencies,
                                               const double * rate_weights,
                                               const unsigned int * pattern_weights,
                                               const double * invar_proportion,
@@ -1022,7 +1143,7 @@ PLL_EXPORT void pll_core_create_lookup_sse(unsigned int states,
                                            double * ttlookup,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int * tipmap,
+                                           const unsigned int * tipmap,
                                            unsigned int tipmap_size);
 
 PLL_EXPORT void pll_core_create_lookup_4x4_sse(unsigned int rate_cats,
@@ -1038,7 +1159,8 @@ PLL_EXPORT void pll_core_update_partial_tt_sse(unsigned int states,
                                                const unsigned char * left_tipchars,
                                                const unsigned char * right_tipchars,
                                                const double * lookup,
-                                               unsigned int tipstates_count);
+                                               unsigned int tipstates_count,
+                                               unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_tt_4x4_sse(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -1046,7 +1168,8 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_sse(unsigned int sites,
                                                    unsigned int * parent_scaler,
                                                    const unsigned char * left_tipchars,
                                                    const unsigned char * right_tipchars,
-                                                   const double * lookup);
+                                                   const double * lookup,
+                                                   unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
                                                unsigned int sites,
@@ -1059,7 +1182,8 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
                                                const double * right_matrix,
                                                const unsigned int * right_scaler,
                                                const unsigned int * tipmap,
-                                               unsigned int tipmap_size);
+                                               unsigned int tipmap_size,
+                                               unsigned int attrib);
 
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4_sse(unsigned int sites,
@@ -1070,7 +1194,8 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_sse(unsigned int sites,
                                                    const double * right_clv,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
-                                                   const unsigned int * right_scaler);
+                                                   const unsigned int * right_scaler,
+                                                   unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ii_sse(unsigned int states,
                                                unsigned int sites,
@@ -1082,7 +1207,8 @@ PLL_EXPORT void pll_core_update_partial_ii_sse(unsigned int states,
                                                const double * left_matrix,
                                                const double * right_matrix,
                                                const unsigned int * left_scaler,
-                                               const unsigned int * right_scaler);
+                                               const unsigned int * right_scaler,
+                                               unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ii_4x4_sse(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -1093,7 +1219,8 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_sse(unsigned int sites,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
-                                                   const unsigned int * right_scaler);
+                                                   const unsigned int * right_scaler,
+                                                   unsigned int attrib);
 #endif
 
 /* functions in core_partials_avx.c */
@@ -1104,7 +1231,7 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            double * lookup,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int * tipmap,
+                                           const unsigned int * tipmap,
                                            unsigned int tipmap_size);
 
 PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
@@ -1116,7 +1243,7 @@ PLL_EXPORT void pll_core_create_lookup_20x20_avx(unsigned int rate_cats,
                                                double * ttlookup,
                                                const double * left_matrix,
                                                const double * right_matrix,
-                                               unsigned int * tipmap,
+                                               const unsigned int * tipmap,
                                                unsigned int tipmap_size);
 
 PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
@@ -1274,21 +1401,26 @@ PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
                                                const double * child_clv,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
-                                               double ** freqs,
-                                               double *sumtable);
+                                               const unsigned int * parent_scaler,
+                                               const unsigned int * child_scaler,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
+                                               double * const * freqs,
+                                               double * sumtable,
+                                               unsigned int attrib);
 
 PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
                                                const unsigned char * left_tipchars,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
-                                               double ** freqs,
-                                               unsigned int * tipmap,
-                                               double *sumtable);
+                                               const unsigned int * parent_scaler,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
+                                               double * const * freqs,
+                                               const unsigned int * tipmap,
+                                               double * sumtable,
+                                               unsigned int attrib);
 
 #endif
 
@@ -1303,9 +1435,9 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                const double * clvc,
                                                const unsigned int * parent_scaler,
                                                const unsigned int * child_scaler,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
-                                               double ** freqs,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
+                                               double * const * freqs,
                                                double * sumtable,
                                                unsigned int attrib);
 
@@ -1316,10 +1448,10 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                const double * parent_clv,
                                                const unsigned char * left_tipchars,
                                                const unsigned int * parent_scaler,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
-                                               double ** freqs,
-                                               unsigned int * tipmap,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
+                                               double * const * freqs,
+                                               const unsigned int * tipmap,
                                                unsigned int tipmap_size,
                                                double * sumtable,
                                                unsigned int attrib);
@@ -1332,7 +1464,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
                                                    const double * rate_weights,
                                                    const int * invariant,
                                                    const double * prop_invar,
-                                                   double ** freqs,
+                                                   double * const * freqs,
                                                    const double * sumtable,
                                                    const double * diagptable,
                                                    double * d_f,
@@ -1365,10 +1497,10 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
                                                 const double * clvc,
                                                 const unsigned int * parent_scaler,
                                                 const unsigned int * child_scaler,
-                                                double ** eigenvecs,
-                                                double ** inv_eigenvecs,
-                                                double ** freqs,
-                                                double *sumtable,
+                                                double * const * eigenvecs,
+                                                double * const * inv_eigenvecs,
+                                                double * const * freqs,
+                                                double * sumtable,
                                                 unsigned int attrib);
 
 PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
@@ -1377,12 +1509,12 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
                                                 const double * parent_clv,
                                                 const unsigned char * left_tipchars,
                                                 const unsigned int * parent_scaler,
-                                                double ** eigenvecs,
-                                                double ** inv_eigenvecs,
-                                                double ** freqs,
-                                                unsigned int * tipmap,
+                                                double * const * eigenvecs,
+                                                double * const * inv_eigenvecs,
+                                                double * const * freqs,
+                                                const unsigned int * tipmap,
                                                 unsigned int tipmap_size,
-                                                double *sumtable,
+                                                double * sumtable,
                                                 unsigned int attrib);
 
 PLL_EXPORT
@@ -1394,7 +1526,7 @@ int pll_core_likelihood_derivatives_avx2(unsigned int states,
                                          const double * rate_weights,
                                          const int * invariant,
                                          const double * prop_invar,
-                                         double ** freqs,
+                                         double * const * freqs,
                                          const double * sumtable,
                                          const double * diagptable,
                                          double * d_f,
@@ -1413,7 +1545,7 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
                                           const double * child_clv,
                                           const unsigned int * child_scaler,
                                           const double * pmatrix,
-                                          double ** frequencies,
+                                          double * const * frequencies,
                                           const double * rate_weights,
                                           const unsigned int * pattern_weights,
                                           const double * invar_proportion,
@@ -1429,13 +1561,14 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
                                               const double * child_clv,
                                               const unsigned int * child_scaler,
                                               const double * pmatrix,
-                                              double ** frequencies,
+                                              double * const * frequencies,
                                               const double * rate_weights,
                                               const unsigned int * pattern_weights,
                                               const double * invar_proportion,
                                               const int * invar_indices,
                                               const unsigned int * freqs_indices,
-                                              double * persite_lnl);
+                                              double * persite_lnl,
+                                              unsigned int attrib);
 
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
@@ -1446,7 +1579,7 @@ double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
                                           const unsigned char * tipchars,
                                           const unsigned int * tipmap,
                                           const double * pmatrix,
-                                          double ** frequencies,
+                                          double * const * frequencies,
                                           const double * rate_weights,
                                           const unsigned int * pattern_weights,
                                           const double * invar_proportion,
@@ -1461,19 +1594,20 @@ double pll_core_edge_loglikelihood_ti_4x4_sse(unsigned int sites,
                                               const unsigned int * parent_scaler,
                                               const unsigned char * tipchars,
                                               const double * pmatrix,
-                                              double ** frequencies,
+                                              double * const * frequencies,
                                               const double * rate_weights,
                                               const unsigned int * pattern_weights,
                                               const double * invar_proportion,
                                               const int * invar_indices,
                                               const unsigned int * freqs_indices,
-                                              double * persite_lnl);
+                                              double * persite_lnl,
+                                              unsigned int attrib);
 
 PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
                                                       unsigned int rate_cats,
                                                       const double * clv,
                                                       const unsigned int * scaler,
-                                                      double ** frequencies,
+                                                      double * const * frequencies,
                                                       const double * rate_weights,
                                                       const unsigned int * pattern_weights,
                                                       const double * invar_proportion,
@@ -1486,7 +1620,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
                                                   unsigned int rate_cats,
                                                   const double * clv,
                                                   const unsigned int * scaler,
-                                                  double ** frequencies,
+                                                  double * const * frequencies,
                                                   const double * rate_weights,
                                                   const unsigned int * pattern_weights,
                                                   const double * invar_proportion,
@@ -1506,7 +1640,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
                                                      const double * child_clv,
                                                      const unsigned int * child_scaler,
                                                      const double * pmatrix,
-                                                     double ** frequencies,
+                                                     double * const * frequencies,
                                                      const double * rate_weights,
                                                      const unsigned int * pattern_weights,
                                                      const double * invar_proportion,
@@ -1521,7 +1655,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,
                                                          const double * child_clv,
                                                          const unsigned int * child_scaler,
                                                          const double * pmatrix,
-                                                         double ** frequencies,
+                                                         double * const * frequencies,
                                                          const double * rate_weights,
                                                          const unsigned int * pattern_weights,
                                                          const double * invar_proportion,
@@ -1587,7 +1721,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                                          const unsigned int * parent_scaler,
                                                          const unsigned char * tipchars,
                                                          const double * pmatrix,
-                                                         double ** frequencies,
+                                                         double * const * frequencies,
                                                          const double * rate_weights,
                                                          const unsigned int * pattern_weights,
                                                          const double * invar_proportion,
@@ -1604,7 +1738,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
                                                            const unsigned int * tipmap,
                                                            unsigned int tipmap_size,
                                                            const double * pmatrix,
-                                                           double ** frequencies,
+                                                           double * const * frequencies,
                                                            const double * rate_weights,
                                                            const unsigned int * pattern_weights,
                                                            const double * invar_proportion,
@@ -1620,7 +1754,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                                      const unsigned char * tipchars,
                                                      const unsigned int * tipmap,
                                                      const double * pmatrix,
-                                                     double ** frequencies,
+                                                     double * const * frequencies,
                                                      const double * rate_weights,
                                                      const unsigned int * pattern_weights,
                                                      const double * invar_proportion,
@@ -1632,7 +1766,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_avx(unsigned int sites,
                                                       unsigned int rate_cats,
                                                       const double * clv,
                                                       const unsigned int * scaler,
-                                                      double ** frequencies,
+                                                      double * const * frequencies,
                                                       const double * rate_weights,
                                                       const unsigned int * pattern_weights,
                                                       const double * invar_proportion,
@@ -1645,7 +1779,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
                                                   unsigned int rate_cats,
                                                   const double * clv,
                                                   const unsigned int * scaler,
-                                                  double ** frequencies,
+                                                  double * const * frequencies,
                                                   const double * rate_weights,
                                                   const unsigned int * pattern_weights,
                                                   const double * invar_proportion,
@@ -1664,7 +1798,7 @@ double pll_core_root_loglikelihood_avx2(unsigned int states,
                                         unsigned int rate_cats,
                                         const double * clv,
                                         const unsigned int * scaler,
-                                        double ** frequencies,
+                                        double * const * frequencies,
                                         const double * rate_weights,
                                         const unsigned int * pattern_weights,
                                         const double * invar_proportion,
@@ -1681,7 +1815,7 @@ double pll_core_edge_loglikelihood_ti_20x20_avx2(unsigned int sites,
                                                  const unsigned int * tipmap,
                                                  unsigned int tipmap_size,
                                                  const double * pmatrix,
-                                                 double ** frequencies,
+                                                 double * const * frequencies,
                                                  const double * rate_weights,
                                                  const unsigned int * pattern_weights,
                                                  const double * invar_proportion,
@@ -1699,7 +1833,7 @@ double pll_core_edge_loglikelihood_ii_avx2(unsigned int states,
                                            const double * child_clv,
                                            const unsigned int * child_scaler,
                                            const double * pmatrix,
-                                           double ** frequencies,
+                                           double * const * frequencies,
                                            const double * rate_weights,
                                            const unsigned int * pattern_weights,
                                            const double * invar_proportion,
@@ -1713,14 +1847,14 @@ double pll_core_edge_loglikelihood_ii_avx2(unsigned int states,
 PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
                                        unsigned int states,
                                        unsigned int rate_cats,
-                                       double * rates,
+                                       const double * rates,
                                        const double * branch_lengths,
                                        const unsigned int * matrix_indices,
                                        const unsigned int * params_indices,
-                                       double * prop_invar,
-                                       double ** eigenvals,
-                                       double ** eigenvecs,
-                                       double ** inv_eigenvecs,
+                                       const double * prop_invar,
+                                       double * const * eigenvals,
+                                       double * const * eigenvecs,
+                                       double * const * inv_eigenvecs,
                                        unsigned int count,
                                        unsigned int attrib);
 
@@ -1729,14 +1863,14 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
 #ifdef HAVE_AVX2
 PLL_EXPORT int pll_core_update_pmatrix_20x20_avx2(double ** pmatrix,
                                                   unsigned int rate_cats,
-                                                  double * rates,
+                                                  const double * rates,
                                                   const double * branch_lengths,
                                                   const unsigned int * matrix_indices,
                                                   const unsigned int * params_indices,
-                                                  double * prop_invar,
-                                                  double ** eigenvals,
-                                                  double ** eigenvecs,
-                                                  double ** inv_eigenvecs,
+                                                  const double * prop_invar,
+                                                  double * const * eigenvals,
+                                                  double * const * eigenvecs,
+                                                  double * const * inv_eigenvecs,
                                                   unsigned int count);
 #endif
 
@@ -1745,26 +1879,26 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx2(double ** pmatrix,
 #ifdef HAVE_AVX
 PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
                                                unsigned int rate_cats,
-                                               double * rates,
+                                               const double * rates,
                                                const double * branch_lengths,
                                                const unsigned int * matrix_indices,
                                                const unsigned int * params_indices,
-                                               double * prop_invar,
-                                               double ** eigenvals,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
+                                               const double * prop_invar,
+                                               double * const * eigenvals,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
                                                unsigned int count);
 
 PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
                                                  unsigned int rate_cats,
-                                                 double * rates,
+                                                 const double * rates,
                                                  const double * branch_lengths,
                                                  const unsigned int * matrix_indices,
                                                  const unsigned int * params_indices,
-                                                 double * prop_invar,
-                                                 double ** eigenvals,
-                                                 double ** eigenvecs,
-                                                 double ** inv_eigenvecs,
+                                                 const double * prop_invar,
+                                                 double * const * eigenvals,
+                                                 double * const * eigenvecs,
+                                                 double * const * inv_eigenvecs,
                                                  unsigned int count);
 #endif
 
@@ -1773,14 +1907,14 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
 #ifdef HAVE_SSE3
 PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
                                                unsigned int rate_cats,
-                                               double * rates,
+                                               const double * rates,
                                                const double * branch_lengths,
                                                const unsigned int * matrix_indices,
                                                const unsigned int * params_indices,
-                                               double * prop_invar,
-                                               double ** eigenvals,
-                                               double ** eigenvecs,
-                                               double ** inv_eigenvecs,
+                                               const double * prop_invar,
+                                               double * const * eigenvals,
+                                               double * const * eigenvecs,
+                                               double * const * inv_eigenvecs,
                                                unsigned int count);
 #endif
 
@@ -1793,19 +1927,19 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
 
 /* functions in utree_moves.c */
 
-PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
-                             pll_utree_t * r,
+PLL_EXPORT int pll_utree_spr(pll_unode_t * p,
+                             pll_unode_t * r,
                              pll_utree_rb_t * rb,
                              double * branch_lengths,
                              unsigned int * matrix_indices);
 
-PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
-                                  pll_utree_t * r,
+PLL_EXPORT int pll_utree_spr_safe(pll_unode_t * p,
+                                  pll_unode_t * r,
                                   pll_utree_rb_t * rb,
                                   double * branch_lengths,
                                   unsigned int * matrix_indices);
 
-PLL_EXPORT int pll_utree_nni(pll_utree_t * p,
+PLL_EXPORT int pll_utree_nni(pll_unode_t * p,
                              int type,
                              pll_utree_rb_t * rb);
 
@@ -1823,17 +1957,17 @@ PLL_EXPORT int pll_set_parsimony_sequence(pll_parsimony_t * pars,
 PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
                                                   unsigned int states,
                                                   unsigned int sites,
-                                                  double * score_matrix,
+                                                  const double * score_matrix,
                                                   unsigned int score_buffers,
                                                   unsigned int ancestral_buffers);
 
 PLL_EXPORT double pll_parsimony_build(pll_parsimony_t * pars,
-                                      pll_pars_buildop_t * operations,
+                                      const pll_pars_buildop_t * operations,
                                       unsigned int count);
 
 PLL_EXPORT void pll_parsimony_reconstruct(pll_parsimony_t * pars,
                                           const unsigned int * map,
-                                          pll_pars_recop_t * operations,
+                                          const pll_pars_recop_t * operations,
                                           unsigned int count);
 
 PLL_EXPORT double pll_parsimony_score(pll_parsimony_t * pars,
@@ -1841,36 +1975,36 @@ PLL_EXPORT double pll_parsimony_score(pll_parsimony_t * pars,
 
 PLL_EXPORT void pll_parsimony_destroy(pll_parsimony_t * pars);
 
-/* functions in svg.c */
+/* functions in utree_svg.c */
 
 PLL_EXPORT pll_svg_attrib_t * pll_svg_attrib_create(void);
 
 PLL_EXPORT void pll_svg_attrib_destroy(pll_svg_attrib_t * attrib);
 
 PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
-                                    unsigned int tip_count,
+                                    pll_unode_t * root,
                                     const pll_svg_attrib_t * attribs,
                                     const char * filename);
 
 /* functions in fast_parsimony.c */
 
-PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition);
+PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(const pll_partition_t * partition);
 
 PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
                                                  const pll_pars_buildop_t * ops,
                                                  unsigned int count);
 
-PLL_EXPORT unsigned int pll_fastparsimony_root_score(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_root_score(const pll_parsimony_t * parsimony,
                                                      unsigned int root_index);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score(const pll_parsimony_t * parsimony,
                                                      unsigned int node1_score_index,
                                                      unsigned int node2_score_index);
 
 PLL_EXPORT void pll_fastparsimony_update_vector_4x4(pll_parsimony_t * parsimony,
                                                     const pll_pars_buildop_t * op);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(const pll_parsimony_t * parsimony,
                                                          unsigned int node1_score_index,
                                                          unsigned int node2_score_index);
 
@@ -1882,11 +2016,11 @@ PLL_EXPORT void pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
 PLL_EXPORT void pll_fastparsimony_update_vector_4x4_sse(pll_parsimony_t * parsimony,
                                                          const pll_pars_buildop_t * op);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_sse(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_sse(const pll_parsimony_t * parsimony,
                                                              unsigned int node1_score_index,
                                                              unsigned int node2_score_index);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_sse(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_sse(const pll_parsimony_t * parsimony,
                                                          unsigned int node1_score_index,
                                                          unsigned int node2_score_index);
 
@@ -1898,7 +2032,7 @@ PLL_EXPORT void pll_fastparsimony_update_vector_sse(pll_parsimony_t * parsimony,
 PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx(pll_parsimony_t * parsimony,
                                                          const pll_pars_buildop_t * op);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx(const pll_parsimony_t * parsimony,
                                                              unsigned int node1_score_index,
                                                              unsigned int node2_score_index);
 
@@ -1906,7 +2040,7 @@ PLL_EXPORT void pll_fastparsimony_update_vector_avx(pll_parsimony_t * parsimony,
                                                     const pll_pars_buildop_t * op);
 
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx(const pll_parsimony_t * parsimony,
                                                          unsigned int node1_score_index,
                                                          unsigned int node2_score_index);
 
@@ -1915,21 +2049,21 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx(pll_parsimony_t * parsi
 PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx2(pll_parsimony_t * parsimony,
                                                           const pll_pars_buildop_t * op);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx2(const pll_parsimony_t * parsimony,
                                                               unsigned int node1_score_index,
                                                               unsigned int node2_score_index);
 
 PLL_EXPORT void pll_fastparsimony_update_vector_avx2(pll_parsimony_t * parsimony,
                                                      const pll_pars_buildop_t * op);
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx2(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx2(const pll_parsimony_t * parsimony,
                                                           unsigned int node1_score_index,
                                                           unsigned int node2_score_index);
 
 /* functions in stepwise.c */
 
 PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
-                                                    char ** labels,
+                                                    char * const * labels,
                                                     unsigned int * score,
                                                     unsigned int count,
                                                     unsigned int seed);
@@ -1949,6 +2083,19 @@ PLL_EXPORT extern int pll_initstate_r(unsigned int __seed,
 
 PLL_EXPORT extern int pll_setstate_r(char * __statebuf,
                                      struct pll_random_data * __buf);
+
+/* functions in hardware.c */
+
+PLL_EXPORT int pll_hardware_probe(void);
+
+PLL_EXPORT void pll_hardware_dump();
+
+/* functions in init.c */
+
+PLL_EXPORT void pll_init(void) __attribute__((constructor));
+
+PLL_EXPORT void pll_fini(void) __attribute__((destructor));
+
 
 #ifdef __cplusplus
 } /* extern "C" */

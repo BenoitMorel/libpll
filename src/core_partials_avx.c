@@ -124,7 +124,7 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            double * ttlookup,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int * tipmap,
+                                           const unsigned int * tipmap,
                                            unsigned int tipmap_size)
 {
   if (states == 4)
@@ -221,7 +221,7 @@ PLL_EXPORT void pll_core_create_lookup_20x20_avx(unsigned int rate_cats,
                                                double * ttlookup,
                                                const double * left_matrix,
                                                const double * right_matrix,
-                                               unsigned int * tipmap,
+                                               const unsigned int * tipmap,
                                                unsigned int tipmap_size)
 {
   unsigned int i,j,k,n,m;

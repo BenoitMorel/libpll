@@ -79,7 +79,7 @@ static int alloc_pars_structs(pll_parsimony_t * parsimony,
   return PLL_SUCCESS;
 }
 
-static int check_informative_extended(pll_partition_t * partition,
+static int check_informative_extended(const pll_partition_t * partition,
                                       unsigned int index,
                                       unsigned int * singleton)
 {
@@ -123,7 +123,7 @@ static int check_informative_extended(pll_partition_t * partition,
   return 1;
 }
 
-static int check_informative(pll_partition_t * partition,
+static int check_informative(const pll_partition_t * partition,
                              unsigned int index,
                              unsigned int * singleton)
 {
@@ -189,7 +189,7 @@ static int check_informative(pll_partition_t * partition,
   return 1;
 }
 
-static int fill_parsimony_vectors(pll_partition_t * partition,
+static int fill_parsimony_vectors(const pll_partition_t * partition,
                                   pll_parsimony_t * parsimony)
 {
   unsigned int c;
@@ -245,17 +245,17 @@ static int fill_parsimony_vectors(pll_partition_t * partition,
                (bitcount % PLL_BITVECTOR_SIZE != 0);
   
 #ifdef HAVE_SSE3
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
     bitvectors = (bitvectors+3) & 0xFFFFFFFC;
 #endif
 
 #ifdef HAVE_AVX
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
     bitvectors = (bitvectors+7) & 0xFFFFFFF8;
 #endif
 
 #ifdef HAVE_AVX2
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
     bitvectors = (bitvectors+7) & 0xFFFFFFF8;
 #endif
   
@@ -359,7 +359,7 @@ static int fill_parsimony_vectors(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
-static int pll_set_informative(pll_partition_t * partition,
+static int pll_set_informative(const pll_partition_t * partition,
                                pll_parsimony_t * parsimony)
 {
   unsigned int i;
@@ -395,7 +395,7 @@ static int pll_set_informative(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(const pll_parsimony_t * parsimony,
                                                          unsigned int node1_score_index,
                                                          unsigned int node2_score_index)
 {
@@ -513,7 +513,7 @@ PLL_EXPORT void pll_fastparsimony_update_vector_4x4(pll_parsimony_t * parsimony,
   parsimony->node_cost[op->parent_score_index] = score+score1+score2;
 }
 
-PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition)
+PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(const pll_partition_t * partition)
 {
   pll_parsimony_t * parsimony;
 
@@ -601,7 +601,7 @@ PLL_EXPORT void pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
   parsimony->node_cost[op->parent_score_index] = score+score1+score2;
 }
 
-static unsigned int fastparsimony_edge_score(pll_parsimony_t * parsimony,
+static unsigned int fastparsimony_edge_score(const pll_parsimony_t * parsimony,
                                              unsigned int node1_score_index,
                                              unsigned int node2_score_index)
 {
@@ -651,17 +651,17 @@ static void fastparsimony_update_vectors_4x4(pll_parsimony_t * parsimony,
   {
     op = &(ops[i]);
 #ifdef HAVE_SSE3
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
       pll_fastparsimony_update_vector_4x4_sse(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
       pll_fastparsimony_update_vector_4x4_avx(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX2
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
       pll_fastparsimony_update_vector_4x4_avx2(parsimony,op);
     else
 #endif
@@ -680,17 +680,17 @@ static int fastparsimony_update_vectors(pll_parsimony_t * parsimony,
   {
     op = &(ops[i]);
 #ifdef HAVE_SSE3
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
       pll_fastparsimony_update_vector_sse(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
       pll_fastparsimony_update_vector_avx(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX2
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
       pll_fastparsimony_update_vector_avx2(parsimony,op);
     else
 #endif
@@ -709,26 +709,26 @@ PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
     fastparsimony_update_vectors(parsimony,ops,count);
 }
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score(const pll_parsimony_t * parsimony,
                                                      unsigned int node1_score_index,
                                                      unsigned int node2_score_index)
 {
   if (parsimony->states == 4)
   {
 #ifdef HAVE_SSE3
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
       return pll_fastparsimony_edge_score_4x4_sse(parsimony,
                                                   node1_score_index,
                                                   node2_score_index);
 #endif
 #ifdef HAVE_AVX
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
       return pll_fastparsimony_edge_score_4x4_avx(parsimony,
                                                   node1_score_index,
                                                   node2_score_index);
 #endif
 #ifdef HAVE_AVX2
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
       return pll_fastparsimony_edge_score_4x4_avx2(parsimony,
                                                    node1_score_index,
                                                    node2_score_index);
@@ -739,21 +739,21 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony
   }
 
 #ifdef HAVE_SSE3
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
     return pll_fastparsimony_edge_score_sse(parsimony,
                                             node1_score_index,
                                             node2_score_index);
   else
 #endif
 #ifdef HAVE_AVX
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
     return pll_fastparsimony_edge_score_avx(parsimony,
                                             node1_score_index,
                                             node2_score_index);
   else
 #endif
 #ifdef HAVE_AVX2
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
     return pll_fastparsimony_edge_score_avx2(parsimony,
                                              node1_score_index,
                                              node2_score_index);
@@ -766,7 +766,7 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony
 }
 
 
-PLL_EXPORT unsigned int pll_fastparsimony_root_score(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_root_score(const pll_parsimony_t * parsimony,
                                                      unsigned int root_index)
 {
   return parsimony->node_cost[root_index] +
