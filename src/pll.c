@@ -24,6 +24,8 @@
 __thread int pll_errno;
 __thread char pll_errmsg[200] = {0};
 
+pll_hardware_t * pll_hardware = NULL;
+
 static void dealloc_partition_data(pll_partition_t * partition);
 
 static void dealloc_partition_data(pll_partition_t * partition)
@@ -260,7 +262,9 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
                         (partition->states_padded * partition->rate_cats);
 
     /* for AVX we do not need to reallocate ttlookup as it has fixed size */
-    if ((partition->states == 4) && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
+    if ((partition->states == 4) &&
+        (partition->attributes & PLL_ATTRIB_ARCH_AVX) &&
+        PLL_STAT(avx_present))
       return PLL_SUCCESS;
 
     free(partition->ttlookup);
@@ -357,7 +361,9 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
 
   /* dedicated 4x4 function  - if AVX is not used we can allocate less space
      in case not all 16 possible ambiguities are present */
-  if ((partition->states == 4) && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
+  if ((partition->states == 4) &&
+      (partition->attributes & PLL_ATTRIB_ARCH_AVX) &&
+      PLL_STAT(avx_present))
   {
     partition->ttlookup = pll_aligned_alloc(1024 * partition->rate_cats *
                                             sizeof(double),
@@ -465,21 +471,21 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->attributes = attributes;
   partition->states_padded = states;
 #ifdef HAVE_SSE3
-  if (attributes & PLL_ATTRIB_ARCH_SSE)
+  if (attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     partition->alignment = PLL_ALIGNMENT_SSE;
     partition->states_padded = (states+1) & 0xFFFFFFFE;
   }
 #endif
 #ifdef HAVE_AVX
-  if (attributes & PLL_ATTRIB_ARCH_AVX)
+  if (attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     partition->alignment = PLL_ALIGNMENT_AVX;
     partition->states_padded = (states+3) & 0xFFFFFFFC;
   }
 #endif
 #ifdef HAVE_AVX2
-  if (attributes & PLL_ATTRIB_ARCH_AVX2)
+  if (attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     partition->alignment = PLL_ALIGNMENT_AVX;
     partition->states_padded = (states+3) & 0xFFFFFFFC;
@@ -1172,7 +1178,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 //TODO: <DOC> We should account for padding before calling this function
 PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
                                unsigned int tip_index,
-                               const double * clv)
+                               const double * clv,
+                               int padding)
 {
   unsigned int i,j,k;
 
@@ -1193,7 +1200,7 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
       memcpy(tipclv, clv, partition->states*sizeof(double));
       tipclv += partition->states_padded;
     }
-    clv += partition->states_padded;
+    clv += padding ? partition->states_padded : partition->states;
   }
 
   /* if asc_bias is set, we initialize the additional positions */

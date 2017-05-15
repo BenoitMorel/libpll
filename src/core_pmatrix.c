@@ -24,14 +24,14 @@
 PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
                                        unsigned int states,
                                        unsigned int rate_cats,
-                                       double * rates,
+                                       const double * rates,
                                        const double * branch_lengths,
                                        const unsigned int * matrix_indices,
                                        const unsigned int * params_indices,
-                                       double * prop_invar,
-                                       double ** eigenvals,
-                                       double ** eigenvecs,
-                                       double ** inv_eigenvecs,
+                                       const double * prop_invar,
+                                       double * const * eigenvals,
+                                       double * const * eigenvecs,
+                                       double * const * inv_eigenvecs,
                                        unsigned int count,
                                        unsigned int attrib)
 {
@@ -48,7 +48,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
 
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -70,7 +70,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -106,7 +106,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {

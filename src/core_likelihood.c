@@ -19,6 +19,7 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 
+#include <limits.h>
 #include "pll.h"
 
 PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
@@ -26,7 +27,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
                                               unsigned int rate_cats,
                                               const double * clv,
                                               const unsigned int * scaler,
-                                              double ** frequencies,
+                                              double * const * frequencies,
                                               const double * rate_weights,
                                               const unsigned int * pattern_weights,
                                               const double * invar_proportion,
@@ -47,7 +48,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -84,7 +85,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -121,7 +122,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {
@@ -250,7 +251,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                           const unsigned int * parent_scaler,
                                           const unsigned char * tipchars,
                                           const double * pmatrix,
-                                          double ** frequencies,
+                                          double * const * frequencies,
                                           const double * rate_weights,
                                           const unsigned int * pattern_weights,
                                           const double * invar_proportion,
@@ -270,14 +271,13 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   double terma, terma_r, termb;
   double site_lk, inv_site_lk;
 
-  unsigned int scale_factors;
   unsigned int cstate;
 
   unsigned int states = 4;
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     return pll_core_edge_loglikelihood_ti_4x4_sse(sites,
                                                   rate_cats,
@@ -291,11 +291,12 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                                   invar_proportion,
                                                   invar_indices,
                                                   freqs_indices,
-                                                  persite_lnl);
+                                                  persite_lnl,
+                                                  attrib);
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
                                                   rate_cats,
@@ -314,7 +315,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
                                                   rate_cats,
@@ -333,10 +334,53 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   }
   #endif
 
+  unsigned int site_scalings;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
     terma = 0;
+
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      site_scalings = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < site_scalings)
+          site_scalings = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - site_scalings,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+    else
+    {
+      /* count number of scaling factors to account for */
+      site_scalings =  (parent_scaler) ? parent_scaler[n] : 0;
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       freqs = frequencies[freqs_indices[i]];
@@ -356,6 +400,12 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
         pmat += states_padded;
       }
 
+      /* apply per-rate scalers, if necessary */
+      if (rate_scalings && rate_scalings[i] > 0)
+      {
+        terma_r *= scale_minlh[rate_scalings[i]-1];
+      }
+
       /* account for invariant sites */
       if (prop_invar > 0)
       {
@@ -373,13 +423,10 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
       clvp += states_padded;
     }
 
-    /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma);
-    if (scale_factors)
-      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+    if (site_scalings)
+      site_lk += site_scalings * log(PLL_SCALE_THRESHOLD);
 
     site_lk *= pattern_weights[n];
 
@@ -391,6 +438,10 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
 
     tipchars++;
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
+
   return logl;
 }
 
@@ -404,7 +455,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                       const unsigned int * tipmap,
                                       unsigned int tipmap_size,
                                       const double * pmatrix,
-                                      double ** frequencies,
+                                      double * const * frequencies,
                                       const double * rate_weights,
                                       const unsigned int * pattern_weights,
                                       const double * invar_proportion,
@@ -430,7 +481,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -446,7 +497,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                     invar_proportion,
                                                     invar_indices,
                                                     freqs_indices,
-                                                    persite_lnl);
+                                                    persite_lnl,
+                                                    attrib);
     }
     else
     {
@@ -472,7 +524,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -533,7 +585,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {
@@ -729,7 +781,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                       const double * child_clv,
                                       const unsigned int * child_scaler,
                                       const double * pmatrix,
-                                      double ** frequencies,
+                                      double * const * frequencies,
                                       const double * rate_weights,
                                       const unsigned int * pattern_weights,
                                       const double * invar_proportion,
@@ -750,14 +802,12 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   double terma, terma_r, termb;
   double site_lk, inv_site_lk;
 
-  unsigned int scale_factors;
-
   /* TODO: We need states_padded in the AVX/SSE implementations
   */
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -774,7 +824,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                     invar_proportion,
                                                     invar_indices,
                                                     freqs_indices,
-                                                    persite_lnl);
+                                                    persite_lnl,
+                                                    attrib);
     }
     else
     {
@@ -800,7 +851,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -844,7 +895,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {
@@ -888,10 +939,55 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   }
   #endif
 
+  unsigned int site_scalings;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
     terma = 0;
+
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      site_scalings = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        rate_scalings[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < site_scalings)
+          site_scalings = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - site_scalings,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+    else
+    {
+      /* count number of scaling factors to account for */
+      site_scalings =  (parent_scaler) ? parent_scaler[n] : 0;
+      site_scalings += (child_scaler) ? child_scaler[n] : 0;
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       freqs = frequencies[freqs_indices[i]];
@@ -903,8 +999,15 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
         {
           termb += pmat[k] * clvc[k];
         }
+
         terma_r += clvp[j] * freqs[j] * termb;
         pmat += states_padded;
+      }
+
+      /* apply per-rate scalers, if necessary */
+      if (rate_scalings && rate_scalings[i] > 0)
+      {
+        terma_r *= scale_minlh[rate_scalings[i]-1];
       }
 
       /* account for invariant sites */
@@ -925,14 +1028,10 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
       clvc += states_padded;
     }
 
-    /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
-
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma);
-    if (scale_factors)
-      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+    if (site_scalings)
+      site_lk += site_scalings * log(PLL_SCALE_THRESHOLD);
 
     site_lk *= pattern_weights[n];
 
@@ -942,5 +1041,9 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
 
     logl += site_lk;
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
+
   return logl;
 }
