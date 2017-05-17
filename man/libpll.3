@@ -1,6 +1,6 @@
 .\" -*- coding: utf-8 -*-
 .\" ============================================================================
-.TH libpll 3 "September 9, 2016" "libpll 0.1.0" "Library Functions Manual"
+.TH libpll 3 "May 17, 2017" "libpll 0.3.1" "Library Functions Manual"
 .\" ============================================================================
 .SH NAME
 libpll \(em Phylogenetic Likelihood Library
@@ -586,5 +586,10 @@ for custom printing. Fixed derivatives computation, parsing of branch lengths,
 invariant sites computation, log-likelihood computation for cases where we have
 scaling and patterns, ascertainment bias computation, per-site log-likelihood
 computation, memory leaks. Added run-time detection of hardware.
+.TP
+.BR v0.3.1\~ "released May 17th, 2017"
+Correct updating of paddded eigen-decomposition arrays for models with a number
+of states not being a power of two. Added portable hardware detection for clang
+and GCC. 
 .RE
 .LP

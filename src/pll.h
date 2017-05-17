@@ -19,6 +19,8 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 
+#ifndef PLL_H
+#define PLL_H
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -26,10 +28,26 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#include <x86intrin.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
+
+#if (!defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 4 || \
+     (__GNUC__ == 4 && __GNUC_MINOR__ < 7)))
+  #if ((__GNUC__ == 4) && (__GNUC_MINOR__ == 6))
+    #if (defined(HAVE_AVX2))
+      #error "GCC 4.6.x. Please run ./configure --disable-avx2"
+    #endif
+  #else
+    #if (defined(HAVE_AVX2) || defined(HAVE_AVX))
+      #error "GCC < 4.6. Please run ./configure --disable-avx --disable-avx2"
+    #endif
+  #endif
+#endif
+
+#ifdef HAVE_X86INTRIN_H
+#include <x86intrin.h>
 #endif
 
 /* platform specific */
@@ -49,7 +67,8 @@
 #define PLL_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define PLL_MAX(a,b) ((a) > (b) ? (a) : (b))
 #define PLL_SWAP(x,y) do { __typeof__ (x) _t = x; x = y; y = _t; } while(0)
-#define PLL_STAT(x) (pll_hardware && pll_hardware->x)
+#define PLL_STAT(x) ((pll_hardware.init || pll_hardware_probe()) \
+                     && pll_hardware.x)
 
 /* constants */
 
@@ -188,6 +207,7 @@ typedef struct pll_repeats
 
 typedef struct pll_hardware_s
 {
+  int init;
   /* cpu features */
   int altivec_present;
   int mmx_present;
@@ -479,7 +499,7 @@ struct pll_random_data
 
 PLL_EXPORT extern __thread int pll_errno;
 PLL_EXPORT extern __thread char pll_errmsg[200];
-PLL_EXPORT extern pll_hardware_t * pll_hardware;
+PLL_EXPORT extern pll_hardware_t pll_hardware;
 
 PLL_EXPORT extern const unsigned int pll_map_bin[256];
 PLL_EXPORT extern const unsigned int pll_map_nt[256];
@@ -2095,13 +2115,9 @@ PLL_EXPORT int pll_hardware_probe(void);
 
 PLL_EXPORT void pll_hardware_dump();
 
-/* functions in init.c */
-
-PLL_EXPORT void pll_init(void) __attribute__((constructor));
-
-PLL_EXPORT void pll_fini(void) __attribute__((destructor));
-
+PLL_EXPORT void pll_hardware_ignore();
 
 #ifdef __cplusplus
 } /* extern "C" */
+#endif
 #endif
