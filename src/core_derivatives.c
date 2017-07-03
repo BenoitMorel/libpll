@@ -413,9 +413,46 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            attrib);
   }
 
+  unsigned int min_scaler;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   /* build sumtable: non-vectorized version, general case */
   for (n = 0; n < sites; n++)
   {
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       t_eigenvecs = eigenvecs[i];
@@ -435,11 +472,17 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
           tipstate >>= 1;
         }
         sum[j] = lefterm * righterm;
+
+        if (rate_scalings && rate_scalings[i] > 0)
+          sum[j] *= scale_minlh[rate_scalings[i]-1];
       }
       t_clvc += states_padded;
       sum += states_padded;
     }
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }
@@ -694,6 +737,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
       switch(asc_bias_type)
       {
+        /* NOTE: since we compute derivatives of -logL, the signs below are flipped
+         * compared to RAxML ("+" for LEWIS and "-" for FELSENSTEIN) */
         case PLL_ATTRIB_AB_LEWIS:
         {
           // TODO: pattern_weight_sum should be stored somewhere!
@@ -702,16 +747,16 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
             pattern_weight_sum += pattern_weights[n];
 
           /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
-          *d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
-          *dd_f -= pattern_weight_sum *
+          *d_f  += pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
+          *dd_f += pattern_weight_sum *
                (((asc_Lk[0] - 1.0) * asc_Lk[2] - asc_Lk[1] * asc_Lk[1]) /
                ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
         }
         break;
         case PLL_ATTRIB_AB_FELSENSTEIN:
           /* derivatives of log(sum Li(s) over states 's') */
-          *d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
-          *dd_f += sum_w_inv *
+          *d_f  -= sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
+          *dd_f -= sum_w_inv *
                (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
                (asc_Lk[0] * asc_Lk[0]));
         break;

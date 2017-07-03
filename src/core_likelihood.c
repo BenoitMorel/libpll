@@ -475,7 +475,6 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   double terma, terma_r, termb;
   double site_lk, inv_site_lk;
 
-  unsigned int scale_factors;
   unsigned int cstate;
 
   unsigned int states_padded = states;
@@ -516,7 +515,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                 invar_proportion,
                                                 invar_indices,
                                                 freqs_indices,
-                                                persite_lnl);
+                                                persite_lnl,
+                                                attrib);
     }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
@@ -559,7 +559,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                       invar_proportion,
                                                       invar_indices,
                                                       freqs_indices,
-                                                      persite_lnl);
+                                                      persite_lnl,
+                                                      attrib);
     }
     else
     {
@@ -577,7 +578,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                 invar_proportion,
                                                 invar_indices,
                                                 freqs_indices,
-                                                persite_lnl);
+                                                persite_lnl,
+                                                attrib);
     }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
@@ -620,7 +622,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                       invar_proportion,
                                                       invar_indices,
                                                       freqs_indices,
-                                                      persite_lnl);
+                                                      persite_lnl,
+                                                      attrib);
     }
     else
     {
@@ -638,7 +641,8 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                 invar_proportion,
                                                 invar_indices,
                                                 freqs_indices,
-                                                persite_lnl);
+                                                persite_lnl,
+                                                attrib);
     }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
@@ -646,8 +650,50 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   }
   #endif
 
+  unsigned int site_scalings;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   for (n = 0; n < sites; ++n)
   {
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      site_scalings = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < site_scalings)
+          site_scalings = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - site_scalings,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+    else
+    {
+      /* count number of scaling factors to account for */
+      site_scalings =  (parent_scaler) ? parent_scaler[n] : 0;
+    }
+
     pmat = pmatrix;
     terma = 0;
     for (i = 0; i < rate_cats; ++i)
@@ -669,6 +715,12 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
         pmat += states_padded;
       }
 
+      /* apply per-rate scalers, if necessary */
+      if (rate_scalings && rate_scalings[i] > 0)
+      {
+        terma_r *= scale_minlh[rate_scalings[i]-1];
+      }
+
       /* account for invariant sites */
       if (prop_invar > 0)
       {
@@ -685,13 +737,10 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
       clvp += states_padded;
     }
 
-    /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma);
-    if (scale_factors)
-      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+    if (site_scalings)
+      site_lk += site_scalings * log(PLL_SCALE_THRESHOLD);
 
     site_lk *= pattern_weights[n];
 
@@ -703,6 +752,10 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
 
     tipchars++;
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
+
   return logl;
 }
 
@@ -843,7 +896,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 invar_proportion,
                                                 invar_indices,
                                                 freqs_indices,
-                                                persite_lnl);
+                                                persite_lnl,
+                                                attrib);
     }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
@@ -887,7 +941,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 invar_proportion,
                                                 invar_indices,
                                                 freqs_indices,
-                                                persite_lnl);
+                                                persite_lnl,
+                                                attrib);
     }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
@@ -931,7 +986,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 invar_proportion,
                                                 invar_indices,
                                                 freqs_indices,
-                                                persite_lnl);
+                                                persite_lnl,
+                                                attrib);
     }
     /* this line is never called, but should we disable the else case above,
        then states_padded must be set to this value */
@@ -959,9 +1015,6 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
 
   for (n = 0; n < sites; ++n)
   {
-    pmat = pmatrix;
-    terma = 0;
-
     if (per_rate_scaling)
     {
       /* compute minimum per-rate scaler -> common per-site scaler */
@@ -988,6 +1041,8 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
       site_scalings += (child_scaler) ? child_scaler[n] : 0;
     }
 
+    pmat = pmatrix;
+    terma = 0;
     for (i = 0; i < rate_cats; ++i)
     {
       freqs = frequencies[freqs_indices[i]];
