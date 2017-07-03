@@ -244,7 +244,6 @@ PLL_EXPORT void pll_reallocate_repeats(pll_partition_t * partition,
   memset(partition->clv[parent], 0, sites_to_alloc);
 }
 
-
 /* Fill the repeat structure in partition for the parent node of op */
 PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
                     const pll_operation_t * op) 
@@ -270,9 +269,7 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   unsigned int s;
 
   // in case site repeats is activated but not used for this node
-  if (!min_size || (repeats->lookup_buffer_size <= min_size)
-      || (repeats->pernode_max_id[left] > (partition->sites / 2))
-      || (repeats->pernode_max_id[right] > (partition->sites / 2)))
+  if (partition->repeats->enable_repeats(partition, left, right))
   {
     sites_to_alloc = partition->sites + additional_sites;
     repeats->pernode_max_id[parent] = 0;

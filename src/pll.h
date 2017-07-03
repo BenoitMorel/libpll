@@ -184,6 +184,8 @@
 
 /* structures and data types */
 
+struct pll_partition;
+
 typedef struct pll_repeats
 {
   /* (node,site) -> class identifier (starts at 1) */
@@ -196,6 +198,12 @@ typedef struct pll_repeats
   unsigned int * perscale_max_id;
   // (node) -> number of allocated clvs
   unsigned int * pernode_allocated_clvs;
+
+  /* return true if we should compute repeats on the current node */
+  unsigned int (*enable_repeats) (struct pll_partition *partition, 
+      unsigned int left_clv, 
+      unsigned int right_clv);
+  
 
   /* temporary buffers */ 
   unsigned int * lookup_buffer;  

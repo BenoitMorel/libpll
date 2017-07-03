@@ -416,6 +416,19 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   return PLL_SUCCESS;
 }
 
+unsigned int default_enable_repeats(pll_partition_t *partition,
+    unsigned int left_clv,
+    unsigned int right_clv)
+{
+  pll_repeats_t * repeats = partition->repeats;
+  unsigned int min_size = repeats->pernode_max_id[left_clv] 
+                          * repeats->pernode_max_id[right_clv];
+  return (!min_size || (repeats->lookup_buffer_size <= min_size)
+      || (repeats->pernode_max_id[left_clv] > (partition->sites / 2))
+      || (repeats->pernode_max_id[right_clv] > (partition->sites / 2)));
+}
+
+
 PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int clv_buffers,
                                                   unsigned int states,
