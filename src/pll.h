@@ -602,9 +602,9 @@ PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
-PLL_EXPORT unsigned int pll_get_sites_number(pll_partition_t * partition,
+PLL_EXPORT unsigned int pll_get_sites_number(const pll_partition_t * partition,
                                              unsigned int clv_index);
-PLL_EXPORT unsigned int pll_get_clv_size(pll_partition_t * partition,
+PLL_EXPORT unsigned int pll_get_clv_size(const pll_partition_t * partition,
                                              unsigned int clv_index);
 /* functions in models.c */
 

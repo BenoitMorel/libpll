@@ -891,6 +891,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     }
     memset(partition->repeats, 0, sizeof(pll_repeats_t));
     pll_repeats_t *repeats = partition->repeats;
+    repeats->enable_repeats = default_enable_repeats;
     repeats->pernode_site_id = calloc(nodes_number, sizeof(unsigned int*));
     repeats->pernode_id_site = calloc(nodes_number, sizeof(unsigned int*));
     if (!repeats->pernode_site_id || !repeats->pernode_id_site) 
@@ -1319,7 +1320,7 @@ PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t siz
       calloc(size, sizeof(unsigned int));
 }
 
-PLL_EXPORT unsigned int pll_get_sites_number(pll_partition_t * partition,
+PLL_EXPORT unsigned int pll_get_sites_number(const pll_partition_t * partition,
                                              unsigned int clv_index)
 {
   unsigned int sites = partition->attributes & PLL_ATTRIB_SITES_REPEATS ?
@@ -1329,7 +1330,7 @@ PLL_EXPORT unsigned int pll_get_sites_number(pll_partition_t * partition,
   return sites;
 }
 
-PLL_EXPORT unsigned int pll_get_clv_size(pll_partition_t * partition,
+PLL_EXPORT unsigned int pll_get_clv_size(const pll_partition_t * partition,
                                              unsigned int clv_index)
 {
   return pll_get_sites_number(partition, clv_index) * 
