@@ -21,7 +21,6 @@
 
 #include "pll.h"
 
-/* default callback to enable repeats computation on a node */
 
 PLL_EXPORT int pll_repeats_enabled(const pll_partition_t *partition)
 {
@@ -35,7 +34,7 @@ PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t siz
       calloc(size, sizeof(unsigned int));
 }
 
-PLL_EXPORT unsigned int pll_get_allocated_sites_number(const pll_partition_t * partition,
+PLL_EXPORT unsigned int pll_get_sites_number(const pll_partition_t * partition,
                                              unsigned int clv_index)
 {
   unsigned int sites = partition->attributes & PLL_ATTRIB_SITES_REPEATS ?
@@ -45,10 +44,10 @@ PLL_EXPORT unsigned int pll_get_allocated_sites_number(const pll_partition_t * p
   return sites;
 }
 
-PLL_EXPORT unsigned int pll_get_allocated_clv_size(const pll_partition_t * partition,
+PLL_EXPORT unsigned int pll_get_clv_size(const pll_partition_t * partition,
                                              unsigned int clv_index)
 {
-  return pll_get_allocated_sites_number(partition, clv_index) * 
+  return pll_get_sites_number(partition, clv_index) * 
     partition->states_padded * partition->rate_cats;
 }
 
@@ -82,6 +81,7 @@ PLL_EXPORT int pll_repeats_initialize(pll_partition_t *partition)
   memset(partition->repeats, 0, sizeof(pll_repeats_t));
   pll_repeats_t *repeats = partition->repeats;
   repeats->enable_repeats = pll_default_enable_repeats;
+  repeats->reallocate_repeats = pll_default_reallocate_repeats;
   repeats->pernode_site_id = calloc(partition->nodes, sizeof(unsigned int*));
   repeats->pernode_id_site = calloc(partition->nodes, sizeof(unsigned int*));
   if (!repeats->pernode_site_id || !repeats->pernode_id_site) 
@@ -190,5 +190,125 @@ PLL_EXPORT int pll_update_repeats_tips(pll_partition_t * partition,
           0,
           sizealloc);
   return PLL_SUCCESS;
+}
+
+PLL_EXPORT void pll_default_reallocate_repeats(pll_partition_t * partition,
+                              unsigned int parent,
+                              int scaler_index,
+                              unsigned int sites_to_alloc)
+{
+  pll_repeats_t * repeats = partition->repeats;
+  if (sites_to_alloc == repeats->pernode_allocated_clvs[parent]) 
+    return;
+  repeats->pernode_allocated_clvs[parent] = sites_to_alloc; 
+  unsigned int ** id_site = repeats->pernode_id_site;
+  // reallocate clvs
+  pll_aligned_free(partition->clv[parent]);  
+  partition->clv[parent] = pll_aligned_alloc(
+      sites_to_alloc * partition->states_padded 
+      * partition->rate_cats * sizeof(double), 
+      partition->alignment);
+  if (!partition->clv[parent]) 
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for repeats structure.");
+    return;
+  }
+  // reallocate scales
+  if (PLL_SCALE_BUFFER_NONE != scaler_index) 
+  { 
+    free(partition->scale_buffer[scaler_index]);
+    partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, 
+        sizeof(unsigned int));
+  }
+  // reallocate id to site lookup  
+  free(id_site[parent]);
+  id_site[parent] = malloc(sites_to_alloc * sizeof(unsigned int));
+  // avoid valgrind errors
+  memset(partition->clv[parent], 0, sites_to_alloc);
+}
+
+/* Fill the repeat structure in partition for the parent node of op */
+PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
+                    const pll_operation_t * op) 
+{
+  pll_repeats_t * repeats = partition->repeats;
+  unsigned int left = op->child1_clv_index;
+  unsigned int right = op->child2_clv_index;
+  unsigned int parent = op->parent_clv_index;
+  unsigned int ** site_ids = repeats->pernode_site_id;
+  unsigned int * site_id_parent = site_ids[parent];
+  const unsigned int * site_id_left = site_ids[left];
+  const unsigned int * site_id_right = site_ids[right];
+  const unsigned int max_id_left = repeats->pernode_max_id[left];
+  unsigned int ** id_site = repeats->pernode_id_site;
+  unsigned int * toclean_buffer = repeats->toclean_buffer;
+  unsigned int * id_site_buffer = repeats->id_site_buffer;
+  unsigned int curr_id = 0;
+  unsigned int additional_sites = partition->asc_bias_alloc ?
+    partition->states : 0;
+  unsigned int sites_to_alloc;
+  unsigned int s;
+
+  // in case site repeats is activated but not used for this node
+  if (partition->repeats->enable_repeats(partition, left, right))
+  {
+    sites_to_alloc = partition->sites + additional_sites;
+    repeats->pernode_max_id[parent] = 0;
+    if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
+      repeats->perscale_max_id[op->parent_scaler_index] = 0;
+  } 
+  else
+  {
+    // fill the parent repeats identifiers
+    for (s = 0; s < partition->sites; ++s) 
+    {
+      unsigned int index_lookup = (site_id_left[s] - 1)
+        + (site_id_right[s] - 1) * max_id_left;
+      unsigned int id = repeats->lookup_buffer[index_lookup];
+      if (!id) 
+      {
+        toclean_buffer[curr_id] = index_lookup;
+        id_site_buffer[curr_id] = s;
+        repeats->lookup_buffer[index_lookup] = ++curr_id;
+        id = curr_id;
+      }
+      site_id_parent[s] = id;
+    }
+    for (s = 0; s < additional_sites; ++s) 
+    {
+      site_id_parent[s + partition->sites] = curr_id + s + 1;
+    }
+    repeats->pernode_max_id[parent] = curr_id;
+    if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
+      repeats->perscale_max_id[op->parent_scaler_index] = curr_id;
+    sites_to_alloc = curr_id + additional_sites;
+  }
+
+  repeats->reallocate_repeats( partition, 
+                          op->parent_clv_index, 
+                          op->parent_scaler_index, 
+                          sites_to_alloc);
+
+  // there is no repeats. Set pernode_max_id to 0
+  // to force the core functions not to use repeats
+  if (sites_to_alloc >= partition->sites + additional_sites) {
+    repeats->pernode_max_id[parent] = 0;
+    if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
+      repeats->perscale_max_id[op->parent_scaler_index] = 0;
+  }
+
+  // set id to site lookups
+  for (s = 0; s < curr_id; ++s) 
+  {
+    id_site[parent][s] = id_site_buffer[s];
+    repeats->lookup_buffer[toclean_buffer[s]] = 0;
+  }
+  for (s = 0; s < additional_sites; ++s) 
+  {
+    id_site[parent][s + curr_id] = partition->sites + s;
+  }
 }
 
