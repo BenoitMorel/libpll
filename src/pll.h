@@ -1000,6 +1000,24 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
 
 /* functions in core_derivatives.c */
 
+PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           const unsigned int * parent_scaler,
+                                           const unsigned int * child_scaler,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * bclv_buffer,
+                                           unsigned int inv,
+                                           unsigned int attrib);
+
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
@@ -1056,6 +1074,24 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                double * d_f,
                                                double * dd_f,
                                                unsigned int attrib);
+
+PLL_EXPORT int pll_core_update_sumtable_repeats_avx(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           const unsigned int * parent_scaler,
+                                           const unsigned int * child_scaler,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * bclv_buffer,
+                                           unsigned int inv,
+                                           unsigned int attrib);
 
 /* functions in core_likelihood.c */
 

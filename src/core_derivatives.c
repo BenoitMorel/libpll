@@ -22,6 +22,49 @@
 #include <limits.h>
 #include "pll.h"
 
+PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const unsigned int * parent_site_id,
+                                           unsigned int parent_max_id,
+                                           const double * clvc,
+                                           const unsigned int * child_site_id,
+                                           const unsigned int * parent_scaler,
+                                           const unsigned int * child_scaler,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           double * bclv_buffer,
+                                           unsigned int inv,
+                                           unsigned int attrib)
+{
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    return pll_core_update_sumtable_repeats_avx(states,
+                                                     sites,
+                                                     rate_cats,
+                                                     clvp,
+                                                     parent_site_id,
+                                                     parent_max_id,
+                                                     clvc,
+                                                     child_site_id,
+                                                     parent_scaler,
+                                                     child_scaler,
+                                                     eigenvecs,
+                                                     inv_eigenvecs,
+                                                     freqs,
+                                                     sumtable,
+                                                     bclv_buffer,
+                                                     inv,
+                                                     attrib);
+  }
+#endif
+  return PLL_FAILURE;
+}
+  
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
