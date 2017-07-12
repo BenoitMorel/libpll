@@ -121,6 +121,11 @@
 
 #define PLL_ATTRIB_RATE_SCALERS    (1 << 9)
 
+/* site repeats */
+
+#define PLL_ATTRIB_SITES_REPEATS    (1 << 10)
+#define PLL_REPEATS_LOOKUP_SIZE  2000000 
+
 /* topological rearrangements */
 
 #define PLL_UTREE_MOVE_SPR                  1
@@ -199,10 +204,13 @@ typedef struct pll_hardware_s
   /* TODO: add chip,core,mem info */
 } pll_hardware_t;
 
+struct pll_repeats;
+
 typedef struct pll_partition
 {
   unsigned int tips;
   unsigned int clv_buffers;
+  unsigned int nodes; // tips + clv_buffer
   unsigned int states;
   unsigned int sites;
   unsigned int pattern_weight_sum;
@@ -243,8 +251,38 @@ typedef struct pll_partition
 
   /* ascertainment bias correction */
   int asc_bias_alloc;
+  int asc_additional_sites; // partition->asc_bias_alloc ? states : 0 
+
+  /* site repeats */
+  struct pll_repeats *repeats;
 } pll_partition_t;
 
+typedef struct pll_repeats
+{
+  /* (node,site) -> class identifier (starts at 1) */
+  unsigned int ** pernode_site_id; 
+  // (node,id) -> class site   
+  unsigned int ** pernode_id_site; 
+  // (node) -> max class identifier. 
+  unsigned int * pernode_max_id;
+  // (node) -> max class identifier. 
+  unsigned int * perscale_max_id;
+  // (node) -> number of allocated clvs
+  unsigned int * pernode_allocated_clvs;
+
+  /* return true if we should compute repeats on the current node
+   default is pll_default_enable_repeats */
+  unsigned int (*enable_repeats) (struct pll_partition *partition, 
+      unsigned int left_clv, 
+      unsigned int right_clv);
+  
+  /* temporary buffers */ 
+  unsigned int * lookup_buffer;  
+  unsigned int * toclean_buffer; 
+  unsigned int * id_site_buffer; 
+  double * bclv_buffer;
+  unsigned int lookup_buffer_size;
+} pll_repeats_t;
 
 /* Structure for driving likelihood operations */
 
@@ -565,6 +603,30 @@ PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
 PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
+
+/* functions in repeats.c */
+
+PLL_EXPORT int pll_repeats_enabled(const pll_partition_t *partition);
+
+PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t size);
+
+PLL_EXPORT unsigned int pll_get_allocated_sites_number(const pll_partition_t * partition,
+                                             unsigned int clv_index);
+
+PLL_EXPORT unsigned int pll_get_allocated_clv_size(const pll_partition_t * partition,
+                                             unsigned int clv_index);
+
+PLL_EXPORT unsigned int pll_default_enable_repeats(pll_partition_t *partition,
+    unsigned int left_clv,
+    unsigned int right_clv);
+
+PLL_EXPORT int pll_repeats_initialize(pll_partition_t *partition);
+
+PLL_EXPORT int pll_update_repeats_tips(pll_partition_t * partition,
+                                  unsigned int tip_index,
+                                  const unsigned int * map,
+                                  const char * sequence);
+
 
 /* functions in models.c */
 

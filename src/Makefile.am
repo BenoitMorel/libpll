@@ -16,6 +16,7 @@ list.c \
 maps.c \
 models.c \
 pll.c \
+repeats.c \
 output.c \
 utree.c \
 rtree.c \
