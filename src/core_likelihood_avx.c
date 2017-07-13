@@ -141,6 +141,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_repeats_avx(unsigned int states,
   for (i = 0; i < sites; ++i)
   {
     unsigned int id = site_id ? site_id[i] - 1 : i;
+    fprintf(stderr, "%d %d %d\n", i, id, id*span);
     const double *clvp = &clv[id * span];
     term = 0;
     for (j = 0; j < rate_cats; ++j)
@@ -162,7 +163,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_repeats_avx(unsigned int states,
         xmm3 = _mm256_add_pd(xmm3,xmm2);
 
         freqs += 4;
-        clv += 4;
+        clvp += 4;
       }
 
       /* add up the elements of xmm2 */

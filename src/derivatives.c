@@ -375,12 +375,28 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
   else
     child_scaler = partition->scale_buffer[child_scaler_index];
 
+
+  unsigned int parent_max_id = partition->sites;
+  unsigned int child_max_id = partition->sites;
+  if (pll_repeats_enabled(partition))
+  {
+    parent_max_id = parent_scaler_index != PLL_SCALE_BUFFER_NONE 
+      ? partition->repeats->perscale_max_id[parent_scaler_index]
+      : 0;
+    parent_max_id = parent_max_id ? parent_max_id : partition->sites;
+    child_max_id = child_scaler_index != PLL_SCALE_BUFFER_NONE 
+      ? partition->repeats->perscale_max_id[child_scaler_index]
+      : 0;
+    child_max_id = child_max_id ? child_max_id : partition->sites;
+  }
   int retval = pll_core_likelihood_derivatives(partition->states,
                                                partition->sites,
                                                partition->rate_cats,
                                                partition->rate_weights,
                                                parent_scaler,
                                                child_scaler,
+                                               parent_max_id,
+                                               child_max_id,
                                                partition->invariant,
                                                partition->pattern_weights,
                                                branch_length,

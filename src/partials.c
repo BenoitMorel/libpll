@@ -194,9 +194,6 @@ static void case_repeats(pll_partition_t * partition,
   unsigned int right_sites = pll_get_sites_number(partition, op->child2_clv_index);
   unsigned int inv = left_sites < right_sites;
 
-  /* ascertaiment bias correction */
-  if (partition->asc_bias_alloc)
-    sites += partition->states;
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
