@@ -267,7 +267,6 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
       (partition->repeats->pernode_max_id[parent_clv_index] 
        || partition->repeats->pernode_max_id[child_clv_index])) 
   {
-    fprintf(stderr, "sumtable_repeats\n");
     retval = sumtable_repeats(partition,
                                  parent_clv_index,
                                  child_clv_index,
