@@ -188,9 +188,9 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
   }
 
   /* allocate memory for the alignment */
-  memptr = column[0] = (char *)malloc((size_t)((*length)+1) *
-                                      (size_t)count *
-                                      sizeof(char*));
+  memptr = column[0] = (char *)malloc((size_t)(*length) *
+                                      (size_t)(count+1) *
+                                      sizeof(char));
   if (!memptr)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
