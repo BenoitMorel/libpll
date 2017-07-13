@@ -309,7 +309,6 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
   }
   else
   {
-    fprintf(stderr, "sumtable_innerinner\n");
     /* inner-inner */
     retval = sumtable_innerinner(partition,
                                  parent_clv_index,
