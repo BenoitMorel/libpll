@@ -525,6 +525,10 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
     repeats->pernode_max_id[child_clv_index] ?
     repeats->pernode_site_id[child_clv_index] : 0x0;
   
+  unsigned int parent_sites = pll_get_sites_number(partition, parent_clv_index);
+  unsigned int child_sites = pll_get_sites_number(partition, child_clv_index);
+  unsigned int inv = parent_sites > child_sites;
+  
   unsigned int * parent_scaler;
   unsigned int * child_scaler;
 
@@ -542,12 +546,13 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
   logl = pll_core_edge_loglikelihood_repeats(partition->states,
                                         partition->sites,
                                         partition->rate_cats,
-                                        clvp,
-                                        parent_scaler,
-                                        parent_site_id,
-                                        clvc,
-                                        child_scaler,
-                                        child_site_id,
+                                        inv ? clvp : clvc,
+                                        inv ? parent_scaler : child_scaler,
+                                        inv ? parent_site_id : child_site_id,
+                                        !inv ? parent_sites : child_sites, 
+                                        !inv ? clvp : clvc,
+                                        !inv ? parent_scaler : child_scaler,
+                                        !inv ? parent_site_id : child_site_id,
                                         partition->pmatrix[matrix_index],
                                         partition->frequencies,
                                         partition->rate_weights,
@@ -556,6 +561,7 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
                                         partition->invariant,
                                         freqs_indices,
                                         persite_lnl,
+                                        partition->repeats->bclv_buffer,
                                         partition->attributes);
 
   /* ascertainment bias correction */
@@ -564,19 +570,13 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
     /* Note the assertion must be done for all rate matrices
     assert(prop_invar == 0);
     */
-    unsigned int parent_sites = partition->repeats->pernode_max_id[parent_clv_index]
-      ? partition->repeats->pernode_max_id[parent_clv_index]
-      : partition->sites;
-    unsigned int child_sites = partition->repeats->pernode_max_id[child_clv_index]
-      ? partition->repeats->pernode_max_id[child_clv_index]
-      : partition->sites;
     logl += edge_loglikelihood_asc_bias_ii(partition,
                                            clvp,
                                            parent_scaler,
-                                           parent_sites,
+                                           parent_sites - partition->states,
                                            clvc,
                                            child_scaler,
-                                           child_sites,
+                                           child_sites - partition->states,
                                            matrix_index,
                                            freqs_indices);
   }

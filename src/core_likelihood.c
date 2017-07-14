@@ -766,6 +766,7 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                       const double * parent_clv,
                                       const unsigned int * parent_scaler,
                                       const unsigned int * parent_site_id,
+                                      const unsigned int child_sites,
                                       const double * child_clv,
                                       const unsigned int * child_scaler,
                                       const unsigned int * child_site_id,
@@ -777,6 +778,7 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                       const int * invar_indices,
                                       const unsigned int * freqs_indices,
                                       double * persite_lnl,
+                                      double * bclv,
                                       unsigned int attrib)
 {
   #ifdef HAVE_AVX
@@ -784,11 +786,13 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
   {
     if (states == 4)
     {
-      return pll_core_edge_loglikelihood_repeats_4x4_avx(sites,
+      if (child_sites < sites / 2) {
+        return pll_core_edge_loglikelihood_repeats_bclv_4x4_avx(sites,
                                                   rate_cats,
                                                   parent_clv,
                                                   parent_scaler,
                                                   parent_site_id,
+                                                  child_sites,
                                                   child_clv,
                                                   child_scaler,
                                                   child_site_id,
@@ -800,8 +804,31 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                                   invar_indices,
                                                   freqs_indices,
                                                   persite_lnl,
+                                                  bclv,
                                                   attrib);
-
+      }
+      else
+      {
+        return pll_core_edge_loglikelihood_repeats_4x4_avx(sites,
+                                                  rate_cats,
+                                                  parent_clv,
+                                                  parent_scaler,
+                                                  parent_site_id,
+                                                  child_sites,
+                                                  child_clv,
+                                                  child_scaler,
+                                                  child_site_id,
+                                                  pmatrix,
+                                                  frequencies,
+                                                  rate_weights,
+                                                  pattern_weights,
+                                                  invar_proportion,
+                                                  invar_indices,
+                                                  freqs_indices,
+                                                  persite_lnl,
+                                                  bclv,
+                                                  attrib);
+      }
     }
     return pll_core_edge_loglikelihood_repeats_avx(states,
                                                   sites,
@@ -809,6 +836,7 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                                   parent_clv,
                                                   parent_scaler,
                                                   parent_site_id,
+                                                  child_sites,
                                                   child_clv,
                                                   child_scaler,
                                                   child_site_id,
@@ -820,6 +848,7 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                                   invar_indices,
                                                   freqs_indices,
                                                   persite_lnl, 
+                                                  bclv,
                                                   attrib);
     
   }
