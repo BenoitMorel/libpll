@@ -436,11 +436,18 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     snprintf(pll_errmsg, 200, "Multiple architecture flags specified.");
     return PLL_FAILURE;
   }
+ 
+  // TODO RENOVE
+  if (attributes & PLL_ATTRIB_FAKE_TIPINNER) 
+  {
+    attributes |= PLL_ATTRIB_SITES_REPEATS;
+  }
 
   /* disable repeats if there are to few sites */
   if (sites < 16 && (attributes & PLL_ATTRIB_SITES_REPEATS)) 
   {
     attributes &= ~PLL_ATTRIB_SITES_REPEATS;
+    attributes &= ~PLL_ATTRIB_FAKE_TIPINNER;
   }
 
   if ((attributes & PLL_ATTRIB_SITES_REPEATS) && !(attributes & PLL_ATTRIB_ARCH_AVX))
@@ -865,7 +872,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       return PLL_FAILURE;
     }
   }
-
+  if (attributes & PLL_ATTRIB_FAKE_TIPINNER) 
+  {
+    partition->repeats->enable_repeats = pll_no_enable_repeats;
+  }
   return partition;
 }
 

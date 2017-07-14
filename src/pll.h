@@ -124,6 +124,7 @@
 /* site repeats */
 
 #define PLL_ATTRIB_SITES_REPEATS    (1 << 10)
+#define PLL_ATTRIB_FAKE_TIPINNER     (1 << 11)
 #define PLL_REPEATS_LOOKUP_SIZE  2000000 
 
 /* topological rearrangements */
@@ -619,6 +620,10 @@ PLL_EXPORT unsigned int pll_get_clv_size(const pll_partition_t * partition,
                                              unsigned int clv_index);
 
 PLL_EXPORT unsigned int pll_default_enable_repeats(pll_partition_t *partition,
+    unsigned int left_clv,
+    unsigned int right_clv);
+
+PLL_EXPORT unsigned int pll_no_enable_repeats(pll_partition_t *partition,
     unsigned int left_clv,
     unsigned int right_clv);
 

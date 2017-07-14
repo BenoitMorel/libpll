@@ -59,9 +59,16 @@ PLL_EXPORT unsigned int pll_default_enable_repeats(pll_partition_t *partition,
   pll_repeats_t * repeats = partition->repeats;
   unsigned int min_size = repeats->pernode_max_id[left_clv] 
                           * repeats->pernode_max_id[right_clv];
-  return (!min_size || (repeats->lookup_buffer_size <= min_size)
+  return !(!min_size || (repeats->lookup_buffer_size <= min_size)
       || (repeats->pernode_max_id[left_clv] > (partition->sites / 2))
       || (repeats->pernode_max_id[right_clv] > (partition->sites / 2)));
+}
+
+PLL_EXPORT unsigned int pll_no_enable_repeats(pll_partition_t *partition,
+    unsigned int left_clv,
+    unsigned int right_clv)
+{
+  return 0;
 }
 
 
@@ -253,7 +260,7 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   unsigned int s;
 
   // in case site repeats is activated but not used for this node
-  if (partition->repeats->enable_repeats(partition, left, right))
+  if (!partition->repeats->enable_repeats(partition, left, right))
   {
     sites_to_alloc = partition->sites + additional_sites;
     repeats->pernode_max_id[parent] = 0;

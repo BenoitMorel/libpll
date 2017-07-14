@@ -117,7 +117,6 @@ static void fill_parent_scaler_repeats(unsigned int sites,
   }
 }
 
-// TODO could be faster with vectorization
 static void fill_parent_scaler_repeats_per_rate(unsigned int sites,
                                        unsigned int rates,
                                        unsigned int * parent_scaler,
@@ -614,7 +613,211 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
   }
 }
 
-PLL_EXPORT void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
+static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifiers,
+                                                        unsigned int rate_cats,
+                                                        double * parent_clv,
+                                                        const unsigned int * parent_id_site,
+                                                        unsigned int * parent_scaler,
+                                                        const double * left_clv,
+                                                        const unsigned int * left_site_id,
+                                                        unsigned int left_sites,
+                                                        const double * right_clv,
+                                                        const unsigned int * right_site_id,
+                                                        unsigned int right_sites,
+                                                        const double * left_matrix,
+                                                        const double * right_matrix,
+                                                        const unsigned int * left_scaler,
+                                                        const unsigned int * right_scaler,
+                                                        double * bclv_buffer,
+                                                        unsigned int attrib)
+{
+  unsigned int states = 4;
+  unsigned int n,k,i;
+
+  const double * lmat;
+  const double * rmat;
+
+  __m256d ymm0,ymm1,ymm2,ymm3,ymm4,ymm5,ymm6,ymm7;
+  __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
+
+  unsigned int span = 4 * rate_cats;
+
+
+  /* scaling-related stuff */
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int scale_mask;
+  unsigned int init_mask;
+  __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
+  __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
+
+  if (!parent_scaler)
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
+  else
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 0xF : 0;
+    /* add up the scale vector of the two children if available */
+    if (scale_mode == 2) 
+      fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+        left_scaler, left_site_id, right_scaler, right_site_id);
+    else
+      fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+        left_scaler, left_site_id, right_scaler, right_site_id);
+  }
+  
+  double *left_res = bclv_buffer; 
+  const double *lclv = left_clv;
+  for (n = 0; n < left_sites; ++n) 
+  {
+    lmat = left_matrix;
+    for (k = 0; k < rate_cats; ++k)
+    {
+      xmm4 = _mm256_load_pd(lmat);
+      xmm5 = _mm256_load_pd(lclv);
+      xmm0 = _mm256_mul_pd(xmm4,xmm5);
+      lmat += states;
+      xmm4 = _mm256_load_pd(lmat);
+      xmm1 = _mm256_mul_pd(xmm4,xmm5);
+      lmat += states;
+      xmm4 = _mm256_load_pd(lmat);
+      xmm2 = _mm256_mul_pd(xmm4,xmm5);
+      lmat += states;
+      xmm4 = _mm256_load_pd(lmat);
+      xmm3 = _mm256_mul_pd(xmm4,xmm5);
+      lmat += states;
+      /* compute x */
+      xmm4 = _mm256_unpackhi_pd(xmm0,xmm1);
+      xmm5 = _mm256_unpacklo_pd(xmm0,xmm1);
+
+      xmm6 = _mm256_unpackhi_pd(xmm2,xmm3);
+      xmm7 = _mm256_unpacklo_pd(xmm2,xmm3);
+
+      xmm0 = _mm256_add_pd(xmm4,xmm5);
+      xmm1 = _mm256_add_pd(xmm6,xmm7);
+
+      xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+      xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+      xmm4 = _mm256_add_pd(xmm2,xmm3);
+
+      _mm256_store_pd(left_res, xmm4);
+      lclv += states;
+      left_res += states;
+    }
+  }
+
+
+  const double *lres = bclv_buffer;
+  const double *rclv = right_clv;
+  const double *before_left_lookup = bclv_buffer - span;
+  const double *before_right_clv = right_clv - span;
+  for (n = 0; n < identifiers; ++n)
+  {
+    if (right_site_id) 
+    {
+      if (parent_id_site) 
+      {
+        unsigned int site = parent_id_site[n];
+        lres = &before_left_lookup[left_site_id[site] * span];
+        rclv = &before_right_clv[right_site_id[site] * span];
+      } else {
+        lres = &before_left_lookup[left_site_id[n] * span];
+        rclv = &before_right_clv[right_site_id[n] * span];
+      }
+    } else {
+        lres = &before_left_lookup[left_site_id[n] * span];
+    }
+    rmat = right_matrix;
+    scale_mask = init_mask;
+
+    for (k = 0; k < rate_cats; ++k)
+    {
+      /* compute vector of x */
+      ymm4 = _mm256_load_pd(rmat);
+      ymm5 = _mm256_load_pd(rclv);
+      ymm0 = _mm256_mul_pd(ymm4,ymm5);
+
+      rmat += states;
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm1 = _mm256_mul_pd(ymm4,ymm5);
+
+      rmat += states;
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm2 = _mm256_mul_pd(ymm4,ymm5);
+
+      rmat += states;
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm3 = _mm256_mul_pd(ymm4,ymm5);
+
+      rmat += states;
+
+      /* compute y */
+      ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
+      ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
+
+      ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
+      ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
+
+      ymm0 = _mm256_add_pd(ymm4,ymm5);
+      ymm1 = _mm256_add_pd(ymm6,ymm7);
+
+      ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
+      ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
+      ymm4 = _mm256_add_pd(ymm2,ymm3);
+
+      /* compute x*y */
+      xmm4 = _mm256_load_pd(lres);
+      xmm0 = _mm256_mul_pd(xmm4,ymm4);
+
+      /* check if scaling is needed for the current rate category */
+      __m256d v_cmp = _mm256_cmp_pd(xmm0, v_scale_threshold, _CMP_LT_OS);
+      const unsigned int rate_mask = _mm256_movemask_pd(v_cmp);
+
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_mask == 0xF)
+        {
+          xmm0 = _mm256_mul_pd(xmm0,v_scale_factor);
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        scale_mask = scale_mask & rate_mask;
+
+      _mm256_store_pd(parent_clv, xmm0);
+
+      parent_clv += states;
+      lres  += states;
+      rclv  += states;
+    }
+
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (scale_mask == 0xF)
+    {
+      parent_clv -= span;
+      for (i = 0; i < span; i += 4)
+      {
+        __m256d v_prod = _mm256_load_pd(parent_clv + i);
+        v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
+        _mm256_store_pd(parent_clv + i, v_prod);
+      }
+      parent_clv += span;
+      parent_scaler[n] += 1;
+    }
+  }
+}
+
+
+static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
                                                         unsigned int rate_cats,
                                                         double * parent_clv,
                                                         const unsigned int * parent_id_site,
@@ -793,6 +996,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers
     }
   }
 }
+
 
 PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                unsigned int sites,
@@ -1626,7 +1830,9 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
 {
   if (states == 4) 
   {
-    pll_core_update_partial_repeats_4x4_avx(identifiers,
+    if (!bclv_buffer || !left_site_id)
+    {
+      pll_core_update_partial_repeats_4x4_avx(identifiers,
                                             rate_cats,
                                             parent_clv,
                                             parent_id_site,
@@ -1643,6 +1849,27 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
                                             right_scaler,
                                             bclv_buffer,
                                             attrib);
+    }
+    else
+    {
+      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+                                            rate_cats,
+                                            parent_clv,
+                                            parent_id_site,
+                                            parent_scaler,
+                                            left_clv,
+                                            left_site_id,
+                                            left_sites,
+                                            right_clv,
+                                            right_site_id,
+                                            right_sites,
+                                            left_matrix,
+                                            right_matrix,
+                                            left_scaler,
+                                            right_scaler,
+                                            bclv_buffer,
+                                            attrib);
+    }
       return;
   }
   
