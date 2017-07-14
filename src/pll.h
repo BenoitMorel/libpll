@@ -1819,6 +1819,24 @@ PLL_EXPORT double pll_core_edge_loglikelihood_repeats_avx(unsigned int states,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl,
                                               unsigned int attrib);
+
+PLL_EXPORT double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const unsigned int * parent_site_id,
+                                              const double * child_clv,
+                                              const unsigned int * child_scaler,
+                                              const unsigned int * child_site_id,
+                                              const double * pmatrix,
+                                              double * const * frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl,
+                                              unsigned int attrib);
 #endif
 
 

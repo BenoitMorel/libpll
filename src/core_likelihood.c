@@ -782,6 +782,27 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
+    if (states == 4)
+    {
+      return pll_core_edge_loglikelihood_repeats_4x4_avx(sites,
+                                                  rate_cats,
+                                                  parent_clv,
+                                                  parent_scaler,
+                                                  parent_site_id,
+                                                  child_clv,
+                                                  child_scaler,
+                                                  child_site_id,
+                                                  pmatrix,
+                                                  frequencies,
+                                                  rate_weights,
+                                                  pattern_weights,
+                                                  invar_proportion,
+                                                  invar_indices,
+                                                  freqs_indices,
+                                                  persite_lnl,
+                                                  attrib);
+
+    }
     return pll_core_edge_loglikelihood_repeats_avx(states,
                                                   sites,
                                                   rate_cats,
