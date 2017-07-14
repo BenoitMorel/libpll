@@ -1830,9 +1830,9 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
 {
   if (states == 4) 
   {
-    if (left_sites < identifiers / 2 + 1)
+    if (bclv_buffer && (left_sites < ((identifiers * 2) / 3) + 1))
     {
-      pll_core_update_partial_repeats_4x4_avx(identifiers,
+      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
                                             rate_cats,
                                             parent_clv,
                                             parent_id_site,
@@ -1852,7 +1852,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
     }
     else
     {
-      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
+      pll_core_update_partial_repeats_4x4_avx(identifiers,
                                             rate_cats,
                                             parent_clv,
                                             parent_id_site,

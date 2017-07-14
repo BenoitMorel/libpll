@@ -786,7 +786,7 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
   {
     if (states == 4)
     {
-      if (child_sites < sites / 2) {
+      if (bclv && (child_sites < (sites * 2) / 3)) {
         return pll_core_edge_loglikelihood_repeats_bclv_4x4_avx(sites,
                                                   rate_cats,
                                                   parent_clv,

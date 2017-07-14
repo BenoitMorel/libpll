@@ -642,6 +642,7 @@ PLL_EXPORT int pll_update_repeats_tips(pll_partition_t * partition,
 PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
                     const pll_operation_t * op) ;
 
+PLL_EXPORT void pll_disable_bclv(pll_partition_t *partition);
 
 
 /* functions in models.c */

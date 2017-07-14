@@ -319,3 +319,11 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   }
 }
 
+PLL_EXPORT void pll_disable_bclv(pll_partition_t *partition)
+{
+  if (!pll_repeats_enabled(partition))
+    return;
+  pll_aligned_free(partition->repeats->bclv_buffer);
+  partition->repeats->bclv_buffer = 0;
+} 
+
