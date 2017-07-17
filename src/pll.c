@@ -1187,3 +1187,28 @@ PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
          state_weights,
          sizeof(unsigned int)*partition->states);
 }
+
+PLL_EXPORT void pll_fill_parent_scaler(unsigned int scaler_size,
+                               unsigned int * parent_scaler,
+                               const unsigned int * left_scaler,
+                               const unsigned int * right_scaler)
+{
+  unsigned int i;
+
+  if (!left_scaler && !right_scaler)
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
+  else if (left_scaler && right_scaler)
+  {
+    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
+    for (i = 0; i < scaler_size; ++i)
+      parent_scaler[i] += right_scaler[i];
+  }
+  else
+  {
+    if (left_scaler)
+      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
+    else
+      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * scaler_size);
+  }
+}
+

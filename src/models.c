@@ -627,7 +627,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
       }
       for (j = 0; j < sites; ++j)
       {
-        unsigned int site = site_id ? site_id[j] - 1 : j;
+        unsigned int site = site_id ? site_id[j] : j;
         tipclv = partition->clv[i] + span_padded * site;
         state = 0;
         for (k = 0; k < states; ++k)

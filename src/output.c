@@ -79,7 +79,7 @@ PLL_EXPORT void pll_show_clv(const pll_partition_t * partition,
   printf ("[ ");
   for (s = 0; s < partition->sites; ++s)
   {
-    i = site_id ? site_id[s] - 1 : s;
+    i = site_id ? site_id[s] : s;
     printf("{");
     for (j = 0; j < rates; ++j)
     {

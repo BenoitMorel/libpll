@@ -21,6 +21,7 @@
 
 #include "pll.h"
 
+const unsigned int EMPTY_ELEMENT = (unsigned int) -1;
 
 PLL_EXPORT int pll_repeats_enabled(const pll_partition_t *partition)
 {
@@ -29,9 +30,13 @@ PLL_EXPORT int pll_repeats_enabled(const pll_partition_t *partition)
 
 PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t size)
 {
-    partition->repeats->lookup_buffer_size = size;
-    partition->repeats->lookup_buffer = 
-      calloc(size, sizeof(unsigned int));
+  if (!size)
+    return;
+  partition->repeats->lookup_buffer_size = size;
+  free(partition->repeats->lookup_buffer);
+  partition->repeats->lookup_buffer = 
+    malloc(size * sizeof(unsigned int));
+  memset(partition->repeats->lookup_buffer, EMPTY_ELEMENT, partition->repeats->lookup_buffer_size * sizeof(unsigned int));
 }
 
 PLL_EXPORT unsigned int pll_get_sites_number(const pll_partition_t * partition,
@@ -118,9 +123,8 @@ PLL_EXPORT int pll_repeats_initialize(pll_partition_t *partition)
   repeats->perscale_max_id = calloc(partition->scale_buffers, sizeof(unsigned int));
   repeats->pernode_allocated_clvs = 
     calloc(partition->nodes, sizeof(unsigned int));
-  repeats->lookup_buffer_size = PLL_REPEATS_LOOKUP_SIZE;
-  repeats->lookup_buffer = 
-    calloc(repeats->lookup_buffer_size, sizeof(unsigned int));
+  repeats->lookup_buffer = 0;
+  pll_resize_repeats_lookup(partition, PLL_REPEATS_LOOKUP_SIZE);
   repeats->toclean_buffer = malloc(sites_alloc * sizeof(unsigned int));
   repeats->id_site_buffer = malloc(sites_alloc * sizeof(unsigned int));
   repeats->bclv_buffer = pll_aligned_alloc(sites_alloc 
@@ -152,32 +156,34 @@ PLL_EXPORT int pll_update_repeats_tips(pll_partition_t * partition,
 
   repeats->pernode_max_id[tip_index] = 0;
   unsigned int curr_id = 0;
+  /* fill pernode_site_id */
   for (s = 0; s < partition->sites; ++s) 
   {
     unsigned int index_lookup = map[(int)sequence[s]] + 1;
-    if (!repeats->lookup_buffer[index_lookup]) 
+    if (EMPTY_ELEMENT == repeats->lookup_buffer[index_lookup]) 
     {
       repeats->toclean_buffer[curr_id] = index_lookup;
       repeats->id_site_buffer[curr_id] = s;
-      repeats->lookup_buffer[index_lookup] = ++curr_id;
+      repeats->lookup_buffer[index_lookup] = curr_id++;
     }
     repeats->pernode_site_id[tip_index][s] = repeats->lookup_buffer[index_lookup];
   }
-  repeats->pernode_max_id[tip_index] = curr_id;
+  unsigned int ids = curr_id;
+  repeats->pernode_max_id[tip_index] = ids;
   free(id_site[tip_index]);
   id_site[tip_index] = malloc(sizeof(unsigned int) 
-      * (curr_id + additional_sites));
-  for (s = 0; s < curr_id; ++s) 
+      * (ids + additional_sites));
+  for (s = 0; s < ids; ++s) 
   {
     id_site[tip_index][s] = repeats->id_site_buffer[s];
-    repeats->lookup_buffer[repeats->toclean_buffer[s]] = 0;
+    repeats->lookup_buffer[repeats->toclean_buffer[s]] = EMPTY_ELEMENT;
   }
   for (s = 0; s < additional_sites; ++s) 
   {
-    id_site[tip_index][curr_id + s] = partition->sites + s;
-    repeats->pernode_site_id[tip_index][partition->sites + s] = curr_id + 1 + s;
+    id_site[tip_index][ids + s] = partition->sites + s;
+    repeats->pernode_site_id[tip_index][partition->sites + s] = ids + s;
   }
-  unsigned int sizealloc = (curr_id + additional_sites) * partition->states_padded * 
+  unsigned int sizealloc = (ids + additional_sites) * partition->states_padded * 
                           partition->rate_cats * sizeof(double);
   free(partition->clv[tip_index]); 
   
@@ -258,7 +264,7 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
     partition->states : 0;
   unsigned int sites_to_alloc;
   unsigned int s;
-
+  unsigned int ids = 0;
   // in case site repeats is activated but not used for this node
   if (!partition->repeats->enable_repeats(partition, left, right))
   {
@@ -272,26 +278,27 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
     // fill the parent repeats identifiers
     for (s = 0; s < partition->sites; ++s) 
     {
-      unsigned int index_lookup = (site_id_left[s] - 1)
-        + (site_id_right[s] - 1) * max_id_left;
+      unsigned int index_lookup = site_id_left[s] +
+        site_id_right[s] * max_id_left;
       unsigned int id = repeats->lookup_buffer[index_lookup];
-      if (!id) 
+      if (EMPTY_ELEMENT == id) 
       {
         toclean_buffer[curr_id] = index_lookup;
         id_site_buffer[curr_id] = s;
-        repeats->lookup_buffer[index_lookup] = ++curr_id;
         id = curr_id;
+        repeats->lookup_buffer[index_lookup] = curr_id++;
       }
       site_id_parent[s] = id;
     }
+    ids = curr_id;
     for (s = 0; s < additional_sites; ++s) 
     {
-      site_id_parent[s + partition->sites] = curr_id + s + 1;
+      site_id_parent[s + partition->sites] = ids + s;
     }
-    repeats->pernode_max_id[parent] = curr_id;
+    repeats->pernode_max_id[parent] = ids;
     if (op->parent_scaler_index != PLL_SCALE_BUFFER_NONE)
-      repeats->perscale_max_id[op->parent_scaler_index] = curr_id;
-    sites_to_alloc = curr_id + additional_sites;
+      repeats->perscale_max_id[op->parent_scaler_index] = ids;
+    sites_to_alloc = ids + additional_sites;
   }
 
   repeats->reallocate_repeats( partition, 
@@ -308,14 +315,14 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
   }
 
   // set id to site lookups
-  for (s = 0; s < curr_id; ++s) 
+  for (s = 0; s < ids; ++s) 
   {
     id_site[parent][s] = id_site_buffer[s];
-    repeats->lookup_buffer[toclean_buffer[s]] = 0;
+    repeats->lookup_buffer[toclean_buffer[s]] = EMPTY_ELEMENT;
   }
   for (s = 0; s < additional_sites; ++s) 
   {
-    id_site[parent][s + curr_id] = partition->sites + s;
+    id_site[parent][s + ids] = partition->sites + s;
   }
 }
 
@@ -326,4 +333,90 @@ PLL_EXPORT void pll_disable_bclv(pll_partition_t *partition)
   pll_aligned_free(partition->repeats->bclv_buffer);
   partition->repeats->bclv_buffer = 0;
 } 
+
+PLL_EXPORT void pll_fill_parent_scaler_repeats(unsigned int sites,
+                                       unsigned int * parent_scaler,
+                                       const unsigned int * psites,
+                                       const unsigned int * left_scaler,
+                                       const unsigned int * lids,
+                                       const unsigned int * right_scaler,
+                                       const unsigned int * rids)
+{
+  // no repeats
+  if (!lids && !rids) 
+  {
+    pll_fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+    return;
+  }
+  
+  // no scalers
+  if (!left_scaler && !right_scaler) 
+  {
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    return;
+  }
+  
+  unsigned int i;
+  if (!psites) {
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    if (left_scaler) 
+    {
+      if (lids) 
+      {
+        for (i = 0; i < sites; ++i) 
+          parent_scaler[i] += left_scaler[lids[i]];
+      }
+      else
+      {
+        for (i = 0; i < sites; ++i)
+          parent_scaler[i] += left_scaler[i];
+      }
+    }
+    if (right_scaler) 
+    {
+      if (rids) 
+      {
+        for (i = 0; i < sites; ++i) 
+          parent_scaler[i] += right_scaler[rids[i]];
+      }
+      else
+      {
+        for (i = 0; i < sites; ++i)
+          parent_scaler[i] += right_scaler[i];
+      }
+    }
+  }
+  else 
+  {
+    if (left_scaler && right_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+        parent_scaler[i] = left_scaler[lids[psites[i]]] + right_scaler[rids[psites[i]]];
+    }
+    else if (left_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+        parent_scaler[i] = left_scaler[lids[psites[i]]];
+    }
+    else 
+    {
+      for (i = 0; i < sites; ++i) 
+        parent_scaler[i] = right_scaler[rids[psites[i]]];
+    } 
+  }
+}
+
+PLL_EXPORT void pll_fill_parent_scaler_repeats_per_rate(unsigned int sites,
+                                       unsigned int rates,
+                                       unsigned int * parent_scaler,
+                                       const unsigned int * psites,
+                                       const unsigned int * left_scaler,
+                                       const unsigned int * lids,
+                                       const unsigned int * right_scaler,
+                                       const unsigned int * rids)
+{
+  fprintf(stderr, "MOT IMPLEMENTED\n");
+  assert(0);
+}
+
 

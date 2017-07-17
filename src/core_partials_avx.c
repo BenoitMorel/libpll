@@ -21,114 +21,7 @@
 
 #include "pll.h"
 
-static void fill_parent_scaler(unsigned int scaler_size,
-                               unsigned int * parent_scaler,
-                               const unsigned int * left_scaler,
-                               const unsigned int * right_scaler)
-{
-  unsigned int i;
 
-  if (!left_scaler && !right_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
-  else if (left_scaler && right_scaler)
-  {
-    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
-    for (i = 0; i < scaler_size; ++i)
-      parent_scaler[i] += right_scaler[i];
-  }
-  else
-  {
-    if (left_scaler)
-      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
-    else
-      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * scaler_size);
-  }
-}
-
-static void fill_parent_scaler_repeats(unsigned int sites,
-                                       unsigned int * parent_scaler,
-                                       const unsigned int * psites,
-                                       const unsigned int * left_scaler,
-                                       const unsigned int * lids,
-                                       const unsigned int * right_scaler,
-                                       const unsigned int * rids)
-{
-  // no repeats
-  if (!lids && !rids) 
-  {
-    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
-    return;
-  }
-  
-  // no scalers
-  if (!left_scaler && !right_scaler) 
-  {
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
-    return;
-  }
-  
-  unsigned int i;
-  if (!psites) {
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
-    if (left_scaler) 
-    {
-      if (lids) 
-      {
-        for (i = 0; i < sites; ++i) 
-          parent_scaler[i] += left_scaler[lids[i] - 1];
-      }
-      else
-      {
-        for (i = 0; i < sites; ++i)
-          parent_scaler[i] += left_scaler[i];
-      }
-    }
-    if (right_scaler) 
-    {
-      if (rids) 
-      {
-        for (i = 0; i < sites; ++i) 
-          parent_scaler[i] += right_scaler[rids[i] - 1];
-      }
-      else
-      {
-        for (i = 0; i < sites; ++i)
-          parent_scaler[i] += right_scaler[i];
-      }
-    }
-  }
-  else 
-  {
-    if (left_scaler && right_scaler) 
-    {
-      for (i = 0; i < sites; ++i) 
-        parent_scaler[i] = left_scaler[lids[psites[i]] - 1] + right_scaler[rids[psites[i]] - 1];
-    }
-    else if (left_scaler) 
-    {
-      for (i = 0; i < sites; ++i) 
-        parent_scaler[i] = left_scaler[lids[psites[i]] - 1];
-    }
-    else 
-    {
-      for (i = 0; i < sites; ++i) 
-        parent_scaler[i] = right_scaler[rids[psites[i]] - 1];
-    } 
-  }
-}
-
-static void fill_parent_scaler_repeats_per_rate(unsigned int sites,
-                                       unsigned int rates,
-                                       unsigned int * parent_scaler,
-                                       const unsigned int * psites,
-                                       const unsigned int * left_scaler,
-                                       const unsigned int * lids,
-                                       const unsigned int * right_scaler,
-                                       const unsigned int * rids)
-{
-  fprintf(stderr, "MOT IMPLEMENTED\n");
-  assert(0);
-}
 
 PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            unsigned int rate_cats,
@@ -491,7 +384,7 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
     /* add up the scale vector of the two children if available */
-    fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
+    pll_fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
   }
 
   for (n = 0; n < sites; ++n)
@@ -662,10 +555,10 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
     init_mask = (scale_mode == 1) ? 0xF : 0;
     /* add up the scale vector of the two children if available */
     if (scale_mode == 2) 
-      fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
     else
-      fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
   }
   
@@ -712,23 +605,13 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
 
   const double *lres = bclv_buffer;
   const double *rclv = right_clv;
-  const double *before_left_lookup = bclv_buffer - span;
-  const double *before_right_clv = right_clv - span;
   for (n = 0; n < identifiers; ++n)
   {
+    unsigned int site = parent_id_site ? parent_id_site[n] : n;
+    lres = &bclv_buffer[left_site_id[site] * span];
     if (right_site_id) 
     {
-      if (parent_id_site) 
-      {
-        unsigned int site = parent_id_site[n];
-        lres = &before_left_lookup[left_site_id[site] * span];
-        rclv = &before_right_clv[right_site_id[site] * span];
-      } else {
-        lres = &before_left_lookup[left_site_id[n] * span];
-        rclv = &before_right_clv[right_site_id[n] * span];
-      }
-    } else {
-        lres = &before_left_lookup[left_site_id[n] * span];
+      rclv = &right_clv[right_site_id[site] * span];
     }
     rmat = right_matrix;
     scale_mask = init_mask;
@@ -786,7 +669,7 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
         if (rate_mask == 0xF)
         {
           xmm0 = _mm256_mul_pd(xmm0,v_scale_factor);
-          parent_scaler[n*rate_cats + k] += 1;
+          parent_scaler[n *rate_cats + k] += 1;
         }
       }
       else
@@ -866,18 +749,18 @@ static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     /* add up the scale vector of the two children if available */
     if (scale_mode == 2) 
-      fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
     else
-      fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
   }
 
   for (n = 0; n < identifiers; ++n)
   {
     unsigned int site = parent_id_site ? parent_id_site[n] : n;
-    unsigned int lid = left_site_id[site] - 1;
-    unsigned int rid = right_site_id ? right_site_id[site] - 1 : site;
+    unsigned int lid = left_site_id[site];
+    unsigned int rid = right_site_id ? right_site_id[site] : site;
     const double *lclv = &left_clv[lid * span];
     const double *rclv = &right_clv[rid * span];
     lmat = left_matrix;
@@ -1164,7 +1047,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
     /* add up the scale vector of the two children if available */
-    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
+    pll_fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
   }
 
   size_t displacement = (states_padded - states) * (states_padded);
@@ -1466,7 +1349,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
     const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
 
     /* update the parent scaler with the scaler of the right child */
-    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
+    pll_fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
   }
 
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
@@ -1665,7 +1548,7 @@ PLL_EXPORT void pll_core_update_partial_ti_20x20_avx(unsigned int sites,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
     /* add up the scale vector of the two children if available */
-    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
+    pll_fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
   }
 
   size_t displacement = (states_padded - states) * (states_padded);
@@ -1900,10 +1783,10 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     /* add up the scale vector of the two children if available */
     if (scale_mode == 2) 
-      fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
     else
-      fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
   }
 
@@ -1913,8 +1796,8 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
   for (n = 0; n < identifiers; ++n)
   {
     unsigned int site = parent_id_site ? parent_id_site[n] : n;
-    unsigned int lid = left_site_id[site] - 1;
-    unsigned int rid = right_site_id ? right_site_id[site] - 1 : site;
+    unsigned int lid = left_site_id[site];
+    unsigned int rid = right_site_id ? right_site_id[site] : site;
     const double *lclv = &left_clv[lid * span_padded];
     const double *rclv = &right_clv[rid * span_padded];
     lmat = left_matrix;
@@ -2149,7 +2032,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
     /* add up the scale vector of the two children if available */
-    fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
+    pll_fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
   }
 
   size_t displacement = (states_padded - states) * (states_padded);

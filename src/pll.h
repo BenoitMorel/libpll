@@ -607,6 +607,11 @@ PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
+PLL_EXPORT void pll_fill_parent_scaler(unsigned int scaler_size,
+                               unsigned int * parent_scaler,
+                               const unsigned int * left_scaler,
+                               const unsigned int * right_scaler);
+
 /* functions in repeats.c */
 
 PLL_EXPORT int pll_repeats_enabled(const pll_partition_t *partition);
@@ -644,6 +649,22 @@ PLL_EXPORT void pll_update_repeats(pll_partition_t * partition,
 
 PLL_EXPORT void pll_disable_bclv(pll_partition_t *partition);
 
+PLL_EXPORT void pll_fill_parent_scaler_repeats(unsigned int sites,
+                                       unsigned int * parent_scaler,
+                                       const unsigned int * psites,
+                                       const unsigned int * left_scaler,
+                                       const unsigned int * lids,
+                                       const unsigned int * right_scaler,
+                                       const unsigned int * rids);
+
+PLL_EXPORT void pll_fill_parent_scaler_repeats_per_rate(unsigned int sites,
+                                       unsigned int rates,
+                                       unsigned int * parent_scaler,
+                                       const unsigned int * psites,
+                                       const unsigned int * left_scaler,
+                                       const unsigned int * lids,
+                                       const unsigned int * right_scaler,
+                                       const unsigned int * rids);
 
 /* functions in models.c */
 
