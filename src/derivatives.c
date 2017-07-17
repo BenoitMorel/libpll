@@ -206,8 +206,8 @@ static int sumtable_repeats(pll_partition_t * partition,
     ? partition->repeats->pernode_site_id[child_clv_index]
     : NULL;
 
-  unsigned int parent_max_id = pll_get_clv_size(partition, parent_clv_index);
-  unsigned int child_max_id = pll_get_clv_size(partition, child_clv_index);
+  unsigned int parent_max_id = pll_get_sites_number(partition, parent_clv_index);
+  unsigned int child_max_id = pll_get_sites_number(partition, child_clv_index);
   unsigned int inv = parent_max_id > child_max_id;
   retval =
     pll_core_update_sumtable_repeats(partition->states,
