@@ -762,14 +762,12 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
 PLL_EXPORT
 double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                       unsigned int sites,
+                                      const unsigned int child_sites,
                                       unsigned int rate_cats,
                                       const double * parent_clv,
                                       const unsigned int * parent_scaler,
-                                      const unsigned int * parent_site_id,
-                                      const unsigned int child_sites,
                                       const double * child_clv,
                                       const unsigned int * child_scaler,
-                                      const unsigned int * child_site_id,
                                       const double * pmatrix,
                                       double ** frequencies,
                                       const double * rate_weights,
@@ -778,81 +776,67 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
                                       const int * invar_indices,
                                       const unsigned int * freqs_indices,
                                       double * persite_lnl,
+                                      const unsigned int * parent_site_id,
+                                      const unsigned int * child_site_id,
                                       double * bclv,
                                       unsigned int attrib)
 {
-  #ifdef HAVE_AVX
+  double (*core_edge_loglikelihood)(unsigned int states,
+                                      unsigned int sites,
+                                      const unsigned int child_sites,
+                                      unsigned int rate_cats,
+                                      const double * parent_clv,
+                                      const unsigned int * parent_scaler,
+                                      const double * child_clv,
+                                      const unsigned int * child_scaler,
+                                      const double * pmatrix,
+                                      double ** frequencies,
+                                      const double * rate_weights,
+                                      const unsigned int * pattern_weights,
+                                      const double * invar_proportion,
+                                      const int * invar_indices,
+                                      const unsigned int * freqs_indices,
+                                      double * persite_lnl,
+                                      const unsigned int * parent_site_id,
+                                      const unsigned int * child_site_id,
+                                      double * bclv,
+                                      unsigned int attrib) = 0x0;
+
+  unsigned int use_bclv = bclv && (child_sites < (sites * 2) / 3);
+
+#ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
+    core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_generic_avx;
     if (states == 4)
     {
-      if (bclv && (child_sites < (sites * 2) / 3)) {
-        return pll_core_edge_loglikelihood_repeats_bclv_4x4_avx(sites,
-                                                  rate_cats,
-                                                  parent_clv,
-                                                  parent_scaler,
-                                                  parent_site_id,
-                                                  child_sites,
-                                                  child_clv,
-                                                  child_scaler,
-                                                  child_site_id,
-                                                  pmatrix,
-                                                  frequencies,
-                                                  rate_weights,
-                                                  pattern_weights,
-                                                  invar_proportion,
-                                                  invar_indices,
-                                                  freqs_indices,
-                                                  persite_lnl,
-                                                  bclv,
-                                                  attrib);
-      }
+      if (use_bclv)
+        core_edge_loglikelihood =  pll_core_edge_loglikelihood_repeatsbclv_4x4_avx;
       else
-      {
-        return pll_core_edge_loglikelihood_repeats_4x4_avx(sites,
-                                                  rate_cats,
-                                                  parent_clv,
-                                                  parent_scaler,
-                                                  parent_site_id,
-                                                  child_sites,
-                                                  child_clv,
-                                                  child_scaler,
-                                                  child_site_id,
-                                                  pmatrix,
-                                                  frequencies,
-                                                  rate_weights,
-                                                  pattern_weights,
-                                                  invar_proportion,
-                                                  invar_indices,
-                                                  freqs_indices,
-                                                  persite_lnl,
-                                                  bclv,
-                                                  attrib);
-      }
+        core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_4x4_avx;
     }
-    return pll_core_edge_loglikelihood_repeats_avx(states,
-                                                  sites,
-                                                  rate_cats,
-                                                  parent_clv,
-                                                  parent_scaler,
-                                                  parent_site_id,
-                                                  child_sites,
-                                                  child_clv,
-                                                  child_scaler,
-                                                  child_site_id,
-                                                  pmatrix,
-                                                  frequencies,
-                                                  rate_weights,
-                                                  pattern_weights,
-                                                  invar_proportion,
-                                                  invar_indices,
-                                                  freqs_indices,
-                                                  persite_lnl, 
-                                                  bclv,
-                                                  attrib);
-    
-  }
+  } 
 #endif
+  return core_edge_loglikelihood(states,
+                                sites,
+                                child_sites,
+                                rate_cats,
+                                parent_clv,
+                                parent_scaler,
+                                child_clv,
+                                child_scaler,
+                                pmatrix,
+                                frequencies,
+                                rate_weights,
+                                pattern_weights,
+                                invar_proportion,
+                                invar_indices,
+                                freqs_indices,
+                                persite_lnl, 
+                                parent_site_id,
+                                child_site_id,
+                                bclv,
+                                attrib);
   return 0.0;
 }
 

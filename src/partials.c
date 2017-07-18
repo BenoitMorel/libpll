@@ -186,12 +186,13 @@ static void case_repeats(pll_partition_t * partition,
   unsigned int * parent_scaler;
   unsigned int * left_scaler;
   unsigned int * right_scaler;
-  unsigned int sites = pll_get_sites_number(partition, op->parent_clv_index);
+  unsigned int parent_sites = pll_get_sites_number(partition, op->parent_clv_index);
   const unsigned int * parent_id_site = 0x0;
   const unsigned int * left_site_id = 0x0;
   const unsigned int * right_site_id = 0x0;
   unsigned int left_sites = pll_get_sites_number(partition, op->child1_clv_index);
   unsigned int right_sites = pll_get_sites_number(partition, op->child2_clv_index);
+  double * bclv_buffer = 0x0;
   unsigned int inv = left_sites < right_sites;
 
 
@@ -212,31 +213,34 @@ static void case_repeats(pll_partition_t * partition,
   else
     right_scaler = NULL;
 
-  if (partition->repeats->pernode_max_id[op->parent_clv_index])
-    parent_id_site = partition->repeats->pernode_id_site[op->parent_clv_index];
-  if (partition->repeats->pernode_max_id[op->child1_clv_index])
-    left_site_id = partition->repeats->pernode_site_id[op->child1_clv_index];
-  if (partition->repeats->pernode_max_id[op->child2_clv_index])
-    right_site_id = partition->repeats->pernode_site_id[op->child2_clv_index];
-  
+  if (partition->repeats)
+  {
+    if (partition->repeats->pernode_max_id[op->parent_clv_index])
+      parent_id_site = partition->repeats->pernode_id_site[op->parent_clv_index];
+    if (partition->repeats->pernode_max_id[op->child1_clv_index])
+      left_site_id = partition->repeats->pernode_site_id[op->child1_clv_index];
+    if (partition->repeats->pernode_max_id[op->child2_clv_index])
+      right_site_id = partition->repeats->pernode_site_id[op->child2_clv_index];
+    bclv_buffer = partition->repeats->bclv_buffer;
+  }
   /* call the function with the shortest clv on the left */
   pll_core_update_partial_repeats(partition->states,
-                                sites,
+                                parent_sites,
+                                inv  ? left_sites   : right_sites,
+                                !inv ? left_sites   : right_sites,
                                 partition->rate_cats,
                                 parent_clv,
-                                parent_id_site,
                                 parent_scaler,
                                 inv  ? left_clv     : right_clv,
-                                inv  ? left_site_id : right_site_id,
-                                inv  ? left_sites   : right_sites,
                                 !inv ? left_clv     : right_clv,
-                                !inv ? left_site_id : right_site_id,
-                                !inv ? left_sites   : right_sites,
                                 inv  ? left_matrix  : right_matrix,
                                 !inv ? left_matrix  : right_matrix,
                                 inv  ? left_scaler  : right_scaler,
                                 !inv ? left_scaler  : right_scaler,
-                                partition->repeats->bclv_buffer,
+                                parent_id_site,
+                                inv  ? left_site_id : right_site_id,
+                                !inv ? left_site_id : right_site_id,
+                                bclv_buffer,
                                 partition->attributes);
 }
 

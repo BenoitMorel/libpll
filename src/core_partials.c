@@ -508,47 +508,75 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
 }
 
 PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
-                                           unsigned int identifiers,
-                                           unsigned int rate_cats,
-                                           double * parent_clv,
-                                           const unsigned int * parent_id_site,
-                                           unsigned int * parent_scaler,
-                                           const double * left_clv,
-                                           const unsigned int * left_site_id,
-                                           unsigned int left_sites,
-                                           const double * right_clv,
-                                           const unsigned int * right_site_id,
-                                           unsigned int right_sites,
-                                           const double * left_matrix,
-                                           const double * right_matrix,
-                                           const unsigned int * left_scaler,
-                                           const unsigned int * right_scaler,
-                                           double * bclv_buffer,
-                                           unsigned int attrib)
+                                               unsigned int parent_sites,
+                                               unsigned int left_sites,
+                                               unsigned int right_sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const double * left_clv,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * left_scaler,
+                                               const unsigned int * right_scaler,
+                                               const unsigned int * parent_id_site,
+                                               const unsigned int * left_site_id,
+                                               const unsigned int * right_site_id,
+                                               double * bclv_buffer,
+                                               unsigned int attrib)
 {
+  void (*core_update_partials) (unsigned int states,
+                               unsigned int parent_sites,
+                               unsigned int left_sites,
+                               unsigned int right_sites,
+                               unsigned int rate_cats,
+                               double * parent_clv,
+                               unsigned int * parent_scaler,
+                               const double * left_clv,
+                               const double * right_clv,
+                               const double * left_matrix,
+                               const double * right_matrix,
+                               const unsigned int * left_scaler,
+                               const unsigned int * right_scaler,
+                               const unsigned int * parent_id_site,
+                               const unsigned int * left_site_id,
+                               const unsigned int * right_site_id,
+                               double * bclv_buffer,
+                               unsigned int attrib) = 0x0;
+
+    unsigned int use_bclv = (bclv_buffer && (left_sites < ((parent_sites * 2) / 3) + 1));
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
-  {
-    pll_core_update_partial_repeats_avx(states,
-                                        identifiers,
-                                        rate_cats,
-                                        parent_clv,
-                                        parent_id_site,
-                                        parent_scaler,
-                                        left_clv,
-                                        left_site_id,
-                                        left_sites,
-                                        right_clv,
-                                        right_site_id,
-                                        right_sites,
-                                        left_matrix,
-                                        right_matrix,
-                                        left_scaler,
-                                        right_scaler,
-                                        bclv_buffer,
-                                        attrib);
+  { 
+    core_update_partials = pll_core_update_partial_repeats_generic_avx;
+    if (states == 4) 
+    {
+      if (use_bclv)
+        core_update_partials = pll_core_update_partial_repeatsbclv_4x4_avx;
+      else  
+        core_update_partials = pll_core_update_partial_repeats_4x4_avx;
+    }
   }
 #endif
+   core_update_partials(states,
+                parent_sites,
+                left_sites,
+                right_sites,
+                rate_cats,
+                parent_clv,
+                parent_scaler,
+                left_clv,
+                right_clv,
+                left_matrix,
+                right_matrix,
+                left_scaler,
+                right_scaler,
+                parent_id_site,
+                left_site_id,
+                right_site_id,
+                bclv_buffer,
+                attrib);
 }
 
 PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,

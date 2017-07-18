@@ -506,25 +506,25 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
   }
 }
 
-static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifiers,
-                                                        unsigned int rate_cats,
-                                                        double * parent_clv,
-                                                        const unsigned int * parent_id_site,
-                                                        unsigned int * parent_scaler,
-                                                        const double * left_clv,
-                                                        const unsigned int * left_site_id,
-                                                        unsigned int left_sites,
-                                                        const double * right_clv,
-                                                        const unsigned int * right_site_id,
-                                                        unsigned int right_sites,
-                                                        const double * left_matrix,
-                                                        const double * right_matrix,
-                                                        const unsigned int * left_scaler,
-                                                        const unsigned int * right_scaler,
-                                                        double * bclv_buffer,
-                                                        unsigned int attrib)
+PLL_EXPORT void pll_core_update_partial_repeatsbclv_4x4_avx(unsigned int states,
+                                               unsigned int parent_sites,
+                                               unsigned int left_sites,
+                                               unsigned int right_sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const double * left_clv,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * left_scaler,
+                                               const unsigned int * right_scaler,
+                                               const unsigned int * parent_id_site,
+                                               const unsigned int * left_site_id,
+                                               const unsigned int * right_site_id,
+                                               double * bclv_buffer,
+                                               unsigned int attrib)
 {
-  unsigned int states = 4;
   unsigned int n,k,i;
 
   const double * lmat;
@@ -555,10 +555,10 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
     init_mask = (scale_mode == 1) ? 0xF : 0;
     /* add up the scale vector of the two children if available */
     if (scale_mode == 2) 
-      pll_fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats_per_rate(parent_sites, rate_cats, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
     else
-      pll_fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats(parent_sites, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
   }
   
@@ -605,7 +605,7 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
 
   const double *lres = bclv_buffer;
   const double *rclv = right_clv;
-  for (n = 0; n < identifiers; ++n)
+  for (n = 0; n < parent_sites; ++n)
   {
     unsigned int site = parent_id_site ? parent_id_site[n] : n;
     lres = &bclv_buffer[left_site_id[site] * span];
@@ -700,25 +700,25 @@ static void pll_core_update_partial_repeats_bclv_4x4_avx(unsigned int identifier
 }
 
 
-static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
-                                                        unsigned int rate_cats,
-                                                        double * parent_clv,
-                                                        const unsigned int * parent_id_site,
-                                                        unsigned int * parent_scaler,
-                                                        const double * left_clv,
-                                                        const unsigned int * left_site_id,
-                                                        unsigned int left_sites,
-                                                        const double * right_clv,
-                                                        const unsigned int * right_site_id,
-                                                        unsigned int right_sites,
-                                                        const double * left_matrix,
-                                                        const double * right_matrix,
-                                                        const unsigned int * left_scaler,
-                                                        const unsigned int * right_scaler,
-                                                        double * bclv_buffer,
-                                                        unsigned int attrib)
+PLL_EXPORT void pll_core_update_partial_repeats_4x4_avx(unsigned int states,
+                                               unsigned int parent_sites,
+                                               unsigned int left_sites,
+                                               unsigned int right_sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const double * left_clv,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * left_scaler,
+                                               const unsigned int * right_scaler,
+                                               const unsigned int * parent_id_site,
+                                               const unsigned int * left_site_id,
+                                               const unsigned int * right_site_id,
+                                               double * bclv_buffer,
+                                               unsigned int attrib)
 {
-  unsigned int states = 4;
   unsigned int n,k,i;
 
   const double * lmat;
@@ -749,17 +749,17 @@ static void pll_core_update_partial_repeats_4x4_avx(unsigned int identifiers,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     /* add up the scale vector of the two children if available */
     if (scale_mode == 2) 
-      pll_fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats_per_rate(parent_sites, rate_cats, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
     else
-      pll_fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats(parent_sites, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
   }
 
-  for (n = 0; n < identifiers; ++n)
+  for (n = 0; n < parent_sites; ++n)
   {
     unsigned int site = parent_id_site ? parent_id_site[n] : n;
-    unsigned int lid = left_site_id[site];
+    unsigned int lid = left_site_id ? left_site_id[site] : site;
     unsigned int rid = right_site_id ? right_site_id[site] : site;
     const double *lclv = &left_clv[lid * span];
     const double *rclv = &right_clv[rid * span];
@@ -1692,70 +1692,25 @@ PLL_EXPORT void pll_core_update_partial_ti_20x20_avx(unsigned int sites,
   pll_aligned_free(lookup);
 }
 
-PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
-                                                     unsigned int identifiers,
-                                                     unsigned int rate_cats,
-                                                     double * parent_clv,
-                                                     const unsigned int * parent_id_site,
-                                                     unsigned int * parent_scaler,
-                                                     const double * left_clv,
-                                                     const unsigned int * left_site_id,
-                                                     unsigned int left_sites,
-                                                     const double * right_clv,
-                                                     const unsigned int * right_site_id,
-                                                     unsigned int right_sites,
-                                                     const double * left_matrix,
-                                                     const double * right_matrix,
-                                                     const unsigned int * left_scaler,
-                                                     const unsigned int * right_scaler,
-                                                     double * bclv_buffer,
-                                                     unsigned int attrib)
+PLL_EXPORT void pll_core_update_partial_repeats_generic_avx(unsigned int states,
+                                               unsigned int parent_sites,
+                                               unsigned int left_sites,
+                                               unsigned int right_sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const double * left_clv,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * left_scaler,
+                                               const unsigned int * right_scaler,
+                                               const unsigned int * parent_id_site,
+                                               const unsigned int * left_site_id,
+                                               const unsigned int * right_site_id,
+                                               double * bclv_buffer,
+                                               unsigned int attrib)
 {
-  if (states == 4) 
-  {
-    if (bclv_buffer && (left_sites < ((identifiers * 2) / 3) + 1))
-    {
-      pll_core_update_partial_repeats_bclv_4x4_avx(identifiers,
-                                            rate_cats,
-                                            parent_clv,
-                                            parent_id_site,
-                                            parent_scaler,
-                                            left_clv,
-                                            left_site_id,
-                                            left_sites,
-                                            right_clv,
-                                            right_site_id,
-                                            right_sites,
-                                            left_matrix,
-                                            right_matrix,
-                                            left_scaler,
-                                            right_scaler,
-                                            bclv_buffer,
-                                            attrib);
-    }
-    else
-    {
-      pll_core_update_partial_repeats_4x4_avx(identifiers,
-                                            rate_cats,
-                                            parent_clv,
-                                            parent_id_site,
-                                            parent_scaler,
-                                            left_clv,
-                                            left_site_id,
-                                            left_sites,
-                                            right_clv,
-                                            right_site_id,
-                                            right_sites,
-                                            left_matrix,
-                                            right_matrix,
-                                            left_scaler,
-                                            right_scaler,
-                                            bclv_buffer,
-                                            attrib);
-    }
-      return;
-  }
-  
   unsigned int i,j,k,n;
 
   const double * lmat;
@@ -1783,20 +1738,20 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
     init_mask = (scale_mode == 1) ? 0xF : 0;
     /* add up the scale vector of the two children if available */
     if (scale_mode == 2) 
-      pll_fill_parent_scaler_repeats_per_rate(identifiers, rate_cats, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats_per_rate(parent_sites, rate_cats, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
     else
-      pll_fill_parent_scaler_repeats(identifiers, parent_scaler, parent_id_site, 
+      pll_fill_parent_scaler_repeats(parent_sites, parent_scaler, parent_id_site, 
         left_scaler, left_site_id, right_scaler, right_site_id);
   }
 
   size_t displacement = (states_padded - states) * (states_padded);
 
   /* compute CLV */
-  for (n = 0; n < identifiers; ++n)
+  for (n = 0; n < parent_sites; ++n)
   {
     unsigned int site = parent_id_site ? parent_id_site[n] : n;
-    unsigned int lid = left_site_id[site];
+    unsigned int lid = left_site_id ? left_site_id[site] : site;
     unsigned int rid = right_site_id ? right_site_id[site] : site;
     const double *lclv = &left_clv[lid * span_padded];
     const double *rclv = &right_clv[rid * span_padded];
@@ -1974,6 +1929,7 @@ PLL_EXPORT void pll_core_update_partial_repeats_avx(unsigned int states,
     }
   }
 }
+
 
 PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                                unsigned int sites,
