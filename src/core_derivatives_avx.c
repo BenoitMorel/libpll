@@ -206,19 +206,20 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
   return PLL_SUCCESS;
 }
 
-static int core_update_sumtable_repeats_4x4_avx(unsigned int sites,
+PLL_EXPORT int pll_core_update_sumtable_repeats_4x4_avx(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int parent_sites,
                                            unsigned int rate_cats,
                                            const double * clvp,
-                                           const unsigned int * parent_site_id,
-                                           unsigned int parent_max_id,
                                            const double * clvc,
-                                           const unsigned int * child_site_id,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
+                                           const unsigned int * parent_site_id,
+                                           const unsigned int * child_site_id,
                                            double * bclv_buffer,
                                            unsigned int inv,
                                            unsigned int attrib)
@@ -230,7 +231,6 @@ static int core_update_sumtable_repeats_4x4_avx(unsigned int sites,
 
   double * t_freqs;
 
-  unsigned int states = 4;
   unsigned int span_padded = rate_cats * states;
 
   /* scaling stuff*/
@@ -398,19 +398,20 @@ static int core_update_sumtable_repeats_4x4_avx(unsigned int sites,
   return PLL_SUCCESS;
 }
 
-static int core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
+PLL_EXPORT int pll_core_update_sumtable_repeatsbclv_4x4_avx( unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int parent_sites,
                                            unsigned int rate_cats,
                                            const double * clvp,
-                                           const unsigned int * parent_site_id,
-                                           unsigned int parent_max_id,
                                            const double * clvc,
-                                           const unsigned int * child_site_id,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
+                                           const unsigned int * parent_site_id,
+                                           const unsigned int * child_site_id,
                                            double * bclv_buffer,
                                            unsigned int inv,
                                            unsigned int attrib)
@@ -423,7 +424,6 @@ static int core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
 
   double * t_freqs;
 
-  unsigned int states = 4;
   unsigned int span_padded = rate_cats * states;
   double * lbclv = bclv_buffer;
 
@@ -487,7 +487,7 @@ static int core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
 
   const double * t_clvp = clvp;
   /* bclv computation */
-  for (n = 0; n < parent_max_id; n++)
+  for (n = 0; n < parent_sites; n++)
   {
     for (i = 0; i < rate_cats; ++i)
     {
@@ -638,65 +638,24 @@ static int core_update_sumtable_repeats_bclv_4x4_avx(unsigned int sites,
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_core_update_sumtable_repeats_avx(unsigned int states,
+PLL_EXPORT int pll_core_update_sumtable_repeats_generic_avx(unsigned int states,
                                            unsigned int sites,
+                                           unsigned int parent_sites,
                                            unsigned int rate_cats,
                                            const double * clvp,
-                                           const unsigned int * parent_site_id,
-                                           unsigned int parent_max_id,
                                            const double * clvc,
-                                           const unsigned int * child_site_id,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            double *sumtable,
+                                           const unsigned int * parent_site_id,
+                                           const unsigned int * child_site_id,
                                            double * bclv_buffer,
                                            unsigned int inv,
                                            unsigned int attrib)
 {
-  if (states == 4) 
-  {
-    if ( bclv_buffer && (parent_max_id < (sites * 2) / 3)) 
-    {
-      return core_update_sumtable_repeats_bclv_4x4_avx(sites, 
-                                                         rate_cats,
-                                                         clvp,
-                                                         parent_site_id,
-                                                         parent_max_id,
-                                                         clvc,
-                                                         child_site_id,
-                                                         parent_scaler,
-                                                         child_scaler,
-                                                         eigenvecs,
-                                                         inv_eigenvecs,
-                                                         freqs,
-                                                         sumtable,
-                                                         bclv_buffer,
-                                                         inv,
-                                                         attrib);
-    }
-    else
-    {
-      return core_update_sumtable_repeats_4x4_avx(sites, 
-                                                         rate_cats,
-                                                         clvp,
-                                                         parent_site_id,
-                                                         parent_max_id,
-                                                         clvc,
-                                                         child_site_id,
-                                                         parent_scaler,
-                                                         child_scaler,
-                                                         eigenvecs,
-                                                         inv_eigenvecs,
-                                                         freqs,
-                                                         sumtable,
-                                                         bclv_buffer,
-                                                         inv,
-                                                         attrib);
-    }
-  }
   unsigned int i, j, k, n;
 
   /* build sumtable */

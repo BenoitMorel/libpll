@@ -450,12 +450,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     attributes &= ~PLL_ATTRIB_FAKE_TIPINNER;
   }
 
-  if ((attributes & PLL_ATTRIB_SITES_REPEATS) && !(attributes & PLL_ATTRIB_ARCH_AVX))
-  {
-    pll_errno = PLL_ERROR_PARAM_INVALID;
-    snprintf(pll_errmsg, 200, "Repeats are can only be enabled with AVX arch flag.");
-    return PLL_FAILURE;
-  }
 
   /* allocate partition */
   pll_partition_t * partition = (pll_partition_t *)malloc(sizeof(pll_partition_t));

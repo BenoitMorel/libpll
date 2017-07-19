@@ -951,26 +951,26 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
 }
 
 PLL_EXPORT
-double pll_core_edge_loglikelihood_repeats_avx(unsigned int states,
-                                              unsigned int sites,
-                                              unsigned int rate_cats,
-                                              const double * parent_clv,
-                                              const unsigned int * parent_scaler,
-                                              const unsigned int * parent_site_id,
-                                              const unsigned int child_sites,
-                                              const double * child_clv,
-                                              const unsigned int * child_scaler,
-                                              const unsigned int * child_site_id,
-                                              const double * pmatrix,
-                                              double ** frequencies,
-                                              const double * rate_weights,
-                                              const unsigned int * pattern_weights,
-                                              const double * invar_proportion,
-                                              const int * invar_indices,
-                                              const unsigned int * freqs_indices,
-                                              double * persite_lnl,
-                                              double * bclv,
-                                              unsigned int attrib)
+double pll_core_edge_loglikelihood_repeats_generic_avx(unsigned int states,
+                                                      unsigned int sites,
+                                                      const unsigned int child_sites,
+                                                      unsigned int rate_cats,
+                                                      const double * parent_clv,
+                                                      const unsigned int * parent_scaler,
+                                                      const double * child_clv,
+                                                      const unsigned int * child_scaler,
+                                                      const double * pmatrix,
+                                                      double ** frequencies,
+                                                      const double * rate_weights,
+                                                      const unsigned int * pattern_weights,
+                                                      const double * invar_proportion,
+                                                      const int * invar_indices,
+                                                      const unsigned int * freqs_indices,
+                                                      double * persite_lnl,
+                                                      const unsigned int * parent_site_id,
+                                                      const unsigned int * child_site_id,
+                                                      double * bclv,
+                                                      unsigned int attrib)
 {
   unsigned int n,i,j,k;
   double logl = 0;
@@ -1016,7 +1016,7 @@ double pll_core_edge_loglikelihood_repeats_avx(unsigned int states,
   }
 
   for (n = 0; n < sites; ++n)
-  {
+  { 
     unsigned int pid = parent_site_id ? parent_site_id[n] : n;
     unsigned int cid = child_site_id ? child_site_id[n] : n;
     const double *clvp = &parent_clv[pid * span];
@@ -1591,25 +1591,26 @@ double pll_core_edge_loglikelihood_ii_4x4_avx(unsigned int sites,
 
 
 PLL_EXPORT
-double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int sites,
-                                              unsigned int rate_cats,
-                                              const double * parent_clv,
-                                              const unsigned int * parent_scaler,
-                                              const unsigned int * parent_site_id,
-                                              const unsigned int child_sites,
-                                              const double * child_clv,
-                                              const unsigned int * child_scaler,
-                                              const unsigned int * child_site_id,
-                                              const double * pmatrix,
-                                              double * const * frequencies,
-                                              const double * rate_weights,
-                                              const unsigned int * pattern_weights,
-                                              const double * invar_proportion,
-                                              const int * invar_indices,
-                                              const unsigned int * freqs_indices,
-                                              double * persite_lnl,
-                                              double * bclv,
-                                              unsigned int attrib)
+double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int states,
+                                                    unsigned int sites,
+                                                    const unsigned int child_sites,
+                                                    unsigned int rate_cats,
+                                                    const double * parent_clv,
+                                                    const unsigned int * parent_scaler,
+                                                    const double * child_clv,
+                                                    const unsigned int * child_scaler,
+                                                    const double * pmatrix,
+                                                    double ** frequencies,
+                                                    const double * rate_weights,
+                                                    const unsigned int * pattern_weights,
+                                                    const double * invar_proportion,
+                                                    const int * invar_indices,
+                                                    const unsigned int * freqs_indices,
+                                                    double * persite_lnl,
+                                                    const unsigned int * parent_site_id,
+                                                    const unsigned int * child_site_id,
+                                                    double * bclv,
+                                                    unsigned int attrib)
 {
   unsigned int n,i;
   double logl = 0;
@@ -1621,7 +1622,6 @@ double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int sites,
   double terma, terma_r;
   double site_lk, inv_site_lk;
 
-  unsigned int states = 4;
   unsigned int states_padded = 4;
   unsigned int span = states * rate_cats;
 
@@ -1785,26 +1785,28 @@ double pll_core_edge_loglikelihood_repeats_4x4_avx(unsigned int sites,
 
   return logl;
 }
+
 PLL_EXPORT
-double pll_core_edge_loglikelihood_repeats_bclv_4x4_avx(unsigned int sites,
-                                              unsigned int rate_cats,
-                                              const double * parent_clv,
-                                              const unsigned int * parent_scaler,
-                                              const unsigned int * parent_site_id,
-                                              const unsigned int child_sites,
-                                              const double * child_clv,
-                                              const unsigned int * child_scaler,
-                                              const unsigned int * child_site_id,
-                                              const double * pmatrix,
-                                              double * const * frequencies,
-                                              const double * rate_weights,
-                                              const unsigned int * pattern_weights,
-                                              const double * invar_proportion,
-                                              const int * invar_indices,
-                                              const unsigned int * freqs_indices,
-                                              double * persite_lnl,
-                                              double *bclv,
-                                              unsigned int attrib)
+double pll_core_edge_loglikelihood_repeatsbclv_4x4_avx(unsigned int states,
+                                                      unsigned int sites,
+                                                      const unsigned int child_sites,
+                                                      unsigned int rate_cats,
+                                                      const double * parent_clv,
+                                                      const unsigned int * parent_scaler,
+                                                      const double * child_clv,
+                                                      const unsigned int * child_scaler,
+                                                      const double * pmatrix,
+                                                      double ** frequencies,
+                                                      const double * rate_weights,
+                                                      const unsigned int * pattern_weights,
+                                                      const double * invar_proportion,
+                                                      const int * invar_indices,
+                                                      const unsigned int * freqs_indices,
+                                                      double * persite_lnl,
+                                                      const unsigned int * parent_site_id,
+                                                      const unsigned int * child_site_id,
+                                                      double * bclv,
+                                                      unsigned int attrib)
 {
   unsigned int n,i;
   double logl = 0;
@@ -1816,7 +1818,6 @@ double pll_core_edge_loglikelihood_repeats_bclv_4x4_avx(unsigned int sites,
   double terma, terma_r;
   double site_lk, inv_site_lk;
 
-  unsigned int states = 4;
   unsigned int states_padded = 4;
   unsigned int span = states * rate_cats;
 
