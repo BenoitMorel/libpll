@@ -208,13 +208,89 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   return logl;
 }
 
+PLL_EXPORT double pll_core_root_loglikelihood_repeats_generic(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * clv,
+                                              const unsigned int * site_id,
+                                              const unsigned int * scaler,
+                                              double * const * frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl)
+{
+  unsigned int i,j,k;
+  double logl = 0;
+  const double * freqs = NULL;
+
+  double prop_invar = 0;
+
+  double term, term_r;
+  double site_lk, inv_site_lk;
+
+  unsigned int states_padded = states;
+  unsigned int span = states_padded * rate_cats;
+
+  /* iterate through sites */
+  for (i = 0; i < sites; ++i)
+  {
+    unsigned int id = site_id ? site_id[i] : i;
+    const double *clvp = &clv[id * span];
+    term = 0;
+    for (j = 0; j < rate_cats; ++j)
+    {
+      freqs = frequencies[freqs_indices[j]];
+      term_r = 0;
+      for (k = 0; k < states; ++k)
+      {
+        term_r += clvp[k] * freqs[k];
+      }
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[j]] : 0;
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (invar_indices[i] == -1) ?
+                           0 : freqs[invar_indices[i]];
+        term += rate_weights[j] * (term_r * (1 - prop_invar) +
+                                   inv_site_lk*prop_invar);
+      }
+      else
+      {
+        term += term_r * rate_weights[j];
+      }
+
+      clvp += states_padded;
+    }
+
+    site_lk = term;
+
+    /* compute site log-likelihood and scale if necessary */
+    site_lk = log(site_lk);
+    if (scaler && scaler[id])
+      site_lk += scaler[id] * log(PLL_SCALE_THRESHOLD);
+
+    site_lk *= pattern_weights[i];
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[i] = site_lk;
+
+    logl += site_lk;
+  }
+  return logl;
+}
+
 PLL_EXPORT double pll_core_root_loglikelihood_repeats(unsigned int states,
                                               unsigned int sites,
                                               unsigned int rate_cats,
                                               const double * clv,
                                               const unsigned int * site_id,
                                               const unsigned int * scaler,
-                                              double ** frequencies,
+                                              double * const * frequencies,
                                               const double * rate_weights,
                                               const unsigned int * pattern_weights,
                                               const double * invar_proportion,
@@ -223,25 +299,40 @@ PLL_EXPORT double pll_core_root_loglikelihood_repeats(unsigned int states,
                                               double * persite_lnl,
                                               unsigned int attrib)
 {
+  double (*core_root_loglikelihood) (unsigned int states,
+                                    unsigned int sites,
+                                    unsigned int rate_cats,
+                                    const double * clv,
+                                    const unsigned int * site_id,
+                                    const unsigned int * scaler,
+                                    double * const * frequencies,
+                                    const double * rate_weights,
+                                    const unsigned int * pattern_weights,
+                                    const double * invar_proportion,
+                                    const int * invar_indices,
+                                    const unsigned int * freqs_indices,
+                                    double * persite_lnl) = 0x0;
+
+  core_root_loglikelihood = pll_core_root_loglikelihood_repeats_generic;
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX) // todo implement states==4
+  if (attrib & PLL_ATTRIB_ARCH_AVX) 
   {
-    return pll_core_root_loglikelihood_repeats_avx(states,
-                                            sites,
-                                            rate_cats,
-                                            clv,
-                                            site_id,
-                                            scaler,
-                                            frequencies,
-                                            rate_weights,
-                                            pattern_weights,
-                                            invar_proportion,
-                                            invar_indices,
-                                            freqs_indices,
-                                            persite_lnl);
+    core_root_loglikelihood = pll_core_root_loglikelihood_repeats_avx;
   }
 #endif
-  return 0.0;
+    return core_root_loglikelihood(states,
+                                  sites,
+                                  rate_cats,
+                                  clv,
+                                  site_id,
+                                  scaler,
+                                  frequencies,
+                                  rate_weights,
+                                  pattern_weights,
+                                  invar_proportion,
+                                  invar_indices,
+                                  freqs_indices,
+                                  persite_lnl);
 }
 
 PLL_EXPORT
