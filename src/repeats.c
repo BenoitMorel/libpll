@@ -231,9 +231,12 @@ PLL_EXPORT void pll_default_reallocate_repeats(pll_partition_t * partition,
   }
   // reallocate scales
   if (PLL_SCALE_BUFFER_NONE != scaler_index) 
-  { 
+  {
+    unsigned int scaler_size = sites_to_alloc;
+    if (partition->attributes & PLL_ATTRIB_RATE_SCALERS) 
+      scaler_size *= partition->rate_cats;
     free(partition->scale_buffer[scaler_index]);
-    partition->scale_buffer[scaler_index] = calloc(sites_to_alloc, 
+    partition->scale_buffer[scaler_index] = calloc(scaler_size, 
         sizeof(unsigned int));
   }
   // reallocate id to site lookup  
@@ -415,8 +418,73 @@ PLL_EXPORT void pll_fill_parent_scaler_repeats_per_rate(unsigned int sites,
                                        const unsigned int * right_scaler,
                                        const unsigned int * rids)
 {
-  fprintf(stderr, "MOT IMPLEMENTED\n");
-  assert(0);
+  unsigned int total_size = sites * rates;
+  unsigned int cpy_size = rates * sizeof(unsigned int);
+  unsigned int total_cpy_size = total_size * sizeof(unsigned int);
+  // no repeats
+  if (!lids && !rids) 
+  {
+    pll_fill_parent_scaler(total_size, parent_scaler, left_scaler, right_scaler);
+    return;
+  }
+  
+  // no scalers
+  if (!left_scaler && !right_scaler) 
+  {
+    memset(parent_scaler, 0, total_cpy_size);
+    return;
+  }
+  
+  unsigned int i, j;
+  if (!psites) {
+    memset(parent_scaler, 0, total_cpy_size);
+    if (left_scaler) 
+    {
+      if (lids) 
+      {
+        for (i = 0; i < sites; ++i) 
+          memcpy(&parent_scaler[i * rates], &left_scaler[lids[i] * rates], cpy_size);
+      }
+      else
+      {
+        memcpy(parent_scaler, left_scaler, total_cpy_size);
+      }
+    }
+    if (right_scaler) 
+    {
+      if (rids) 
+      {
+        for (i = 0; i < sites; ++i)
+          for (j = 0; j < rates; ++j)
+            parent_scaler[i * rates + j] += right_scaler[rids[i] * rates + j];
+      }
+      else
+      {
+        for (i = 0; i < total_size; ++i)
+          parent_scaler[i] += right_scaler[i];
+      }
+    }
+  }
+  else 
+  {
+    if (left_scaler && right_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+          for (j = 0; j < rates; ++j)
+            parent_scaler[i * rates + j] = left_scaler[lids[psites[i]] * rates + j] 
+              + right_scaler[rids[psites[i]] * rates + j];
+    }
+    else if (left_scaler) 
+    {
+      for (i = 0; i < sites; ++i) 
+        memcpy(&parent_scaler[i * rates], &left_scaler[lids[psites[i]] * rates], cpy_size);
+    }
+    else 
+    {
+      for (i = 0; i < sites; ++i) 
+        memcpy(&parent_scaler[i * rates], &right_scaler[rids[psites[i]] * rates], cpy_size);
+    } 
+  }
 }
 
 
