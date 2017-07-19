@@ -24,7 +24,7 @@
 #define N_STATES_AA 20
 #define N_STATES_ODD 5
 #define N_CAT_GAMMA 4
-#define N_SITES 5
+#define N_SITES 17
 #define FLOAT_PRECISION 4
 
 #define TREEFILE   "testdata/2000.tree"
