@@ -72,6 +72,13 @@ PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
     }
   }
 #endif
+#ifdef HAVE_SSE3
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    core_update_sumtable = pll_core_update_sumtable_repeats_generic_sse;
+  }
+#endif
+
   return core_update_sumtable(states,
                              sites,
                              parent_sites,

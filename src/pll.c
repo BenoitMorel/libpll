@@ -444,7 +444,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
 
   /* disable repeats if there are to few sites */
-  if (sites < 16 && (attributes & PLL_ATTRIB_SITES_REPEATS)) 
+  if (sites < 4 && (attributes & PLL_ATTRIB_SITES_REPEATS)) 
   {
     attributes &= ~PLL_ATTRIB_SITES_REPEATS;
     attributes &= ~PLL_ATTRIB_FAKE_TIPINNER;

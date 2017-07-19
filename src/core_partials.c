@@ -551,7 +551,7 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
     core_update_partials = pll_core_update_partial_repeatsbclv_generic;
   else  
     core_update_partials = pll_core_update_partial_repeats_generic;
-#ifdef HAVE_AVX
+#ifdef HAVE_AVX 
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   { 
     core_update_partials = pll_core_update_partial_repeats_generic_avx;
@@ -563,6 +563,13 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
         core_update_partials = pll_core_update_partial_repeats_4x4_avx;
     }
   }
+#endif
+#ifdef HAVE_SSE3
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    core_update_partials = pll_core_update_partial_repeats_generic_sse;
+  }
+
 #endif
    core_update_partials(states,
                 parent_sites,

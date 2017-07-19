@@ -320,6 +320,12 @@ PLL_EXPORT double pll_core_root_loglikelihood_repeats(unsigned int states,
     core_root_loglikelihood = pll_core_root_loglikelihood_repeats_avx;
   }
 #endif
+#ifdef HAVE_SSE3
+  if (attrib & PLL_ATTRIB_ARCH_SSE) 
+  {
+    core_root_loglikelihood = pll_core_root_loglikelihood_repeats_sse;
+  }
+#endif
     return core_root_loglikelihood(states,
                                   sites,
                                   rate_cats,
@@ -908,6 +914,12 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
         core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_4x4_avx;
     }
   } 
+#endif
+#ifdef HAVE_SSE3
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_generic_sse;
+  }
 #endif
   return core_edge_loglikelihood(states,
                                 sites,
