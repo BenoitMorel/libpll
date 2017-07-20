@@ -207,22 +207,22 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
 }
 
 PLL_EXPORT int pll_core_update_sumtable_repeats_4x4_avx(unsigned int states,
-                                           unsigned int sites,
-                                           unsigned int parent_sites,
-                                           unsigned int rate_cats,
-                                           const double * clvp,
-                                           const double * clvc,
-                                           const unsigned int * parent_scaler,
-                                           const unsigned int * child_scaler,
-                                           double * const * eigenvecs,
-                                           double * const * inv_eigenvecs,
-                                           double * const * freqs,
-                                           double *sumtable,
-                                           const unsigned int * parent_site_id,
-                                           const unsigned int * child_site_id,
-                                           double * bclv_buffer,
-                                           unsigned int inv,
-                                           unsigned int attrib)
+                                                        unsigned int sites,
+                                                        unsigned int parent_sites,
+                                                        unsigned int rate_cats,
+                                                        const double * clvp,
+                                                        const double * clvc,
+                                                        const unsigned int * parent_scaler,
+                                                        const unsigned int * child_scaler,
+                                                        double * const * eigenvecs,
+                                                        double * const * inv_eigenvecs,
+                                                        double * const * freqs,
+                                                        double *sumtable,
+                                                        const unsigned int * parent_site_id,
+                                                        const unsigned int * child_site_id,
+                                                        double * bclv_buffer,
+                                                        unsigned int inv,
+                                                        unsigned int attrib)
 {
   unsigned int i, j, k, n;
 
@@ -398,23 +398,23 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_4x4_avx(unsigned int states,
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_core_update_sumtable_repeatsbclv_4x4_avx( unsigned int states,
-                                           unsigned int sites,
-                                           unsigned int parent_sites,
-                                           unsigned int rate_cats,
-                                           const double * clvp,
-                                           const double * clvc,
-                                           const unsigned int * parent_scaler,
-                                           const unsigned int * child_scaler,
-                                           double * const * eigenvecs,
-                                           double * const * inv_eigenvecs,
-                                           double * const * freqs,
-                                           double *sumtable,
-                                           const unsigned int * parent_site_id,
-                                           const unsigned int * child_site_id,
-                                           double * bclv_buffer,
-                                           unsigned int inv,
-                                           unsigned int attrib)
+PLL_EXPORT int pll_core_update_sumtable_repeatsbclv_4x4_avx(unsigned int states,
+                                                            unsigned int sites,
+                                                            unsigned int parent_sites,
+                                                            unsigned int rate_cats,
+                                                            const double * clvp,
+                                                            const double * clvc,
+                                                            const unsigned int * parent_scaler,
+                                                            const unsigned int * child_scaler,
+                                                            double * const * eigenvecs,
+                                                            double * const * inv_eigenvecs,
+                                                            double * const * freqs,
+                                                            double *sumtable,
+                                                            const unsigned int * parent_site_id,
+                                                            const unsigned int * child_site_id,
+                                                            double * bclv_buffer,
+                                                            unsigned int inv,
+                                                            unsigned int attrib)
 {
   unsigned int i, j, k, n;
 
@@ -639,22 +639,22 @@ PLL_EXPORT int pll_core_update_sumtable_repeatsbclv_4x4_avx( unsigned int states
 }
 
 PLL_EXPORT int pll_core_update_sumtable_repeats_generic_avx(unsigned int states,
-                                           unsigned int sites,
-                                           unsigned int parent_sites,
-                                           unsigned int rate_cats,
-                                           const double * clvp,
-                                           const double * clvc,
-                                           const unsigned int * parent_scaler,
-                                           const unsigned int * child_scaler,
-                                           double * const * eigenvecs,
-                                           double * const * inv_eigenvecs,
-                                           double * const * freqs,
-                                           double *sumtable,
-                                           const unsigned int * parent_site_id,
-                                           const unsigned int * child_site_id,
-                                           double * bclv_buffer,
-                                           unsigned int inv,
-                                           unsigned int attrib)
+                                                            unsigned int sites,
+                                                            unsigned int parent_sites,
+                                                            unsigned int rate_cats,
+                                                            const double * clvp,
+                                                            const double * clvc,
+                                                            const unsigned int * parent_scaler,
+                                                            const unsigned int * child_scaler,
+                                                            double * const * eigenvecs,
+                                                            double * const * inv_eigenvecs,
+                                                            double * const * freqs,
+                                                            double *sumtable,
+                                                            const unsigned int * parent_site_id,
+                                                            const unsigned int * child_site_id,
+                                                            double * bclv_buffer,
+                                                            unsigned int inv,
+                                                            unsigned int attrib)
 {
   unsigned int i, j, k, n;
 

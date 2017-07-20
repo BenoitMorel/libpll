@@ -128,22 +128,22 @@ static int core_update_sumtable_ti_4x4_sse(unsigned int sites,
 }
 
 PLL_EXPORT int pll_core_update_sumtable_repeats_generic_sse(unsigned int states,
-                                                   unsigned int sites,
-                                                   unsigned int parent_sites,
-                                                   unsigned int rate_cats,
-                                                   const double * clvp,
-                                                   const double * clvc,
-                                                   const unsigned int * parent_scaler,
-                                                   const unsigned int * child_scaler,
-                                                   double * const * eigenvecs,
-                                                   double * const * inv_eigenvecs,
-                                                   double * const * freqs,
-                                                   double *sumtable,
-                                                   const unsigned int * parent_site_id,
-                                                   const unsigned int * child_site_id,
-                                                   double * bclv_buffer,
-                                                   unsigned int inv,
-                                                   unsigned int attrib)
+                                                            unsigned int sites,
+                                                            unsigned int parent_sites,
+                                                            unsigned int rate_cats,
+                                                            const double * clvp,
+                                                            const double * clvc,
+                                                            const unsigned int * parent_scaler,
+                                                            const unsigned int * child_scaler,
+                                                            double * const * eigenvecs,
+                                                            double * const * inv_eigenvecs,
+                                                            double * const * freqs,
+                                                            double *sumtable,
+                                                            const unsigned int * parent_site_id,
+                                                            const unsigned int * child_site_id,
+                                                            double * bclv_buffer,
+                                                            unsigned int inv,
+                                                            unsigned int attrib)
 {
   unsigned int i, j, k, n;
   double lterm = 0;
