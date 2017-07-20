@@ -30,9 +30,9 @@ PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
                                            const double * clvc,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
                                            double *sumtable,
                                            const unsigned int * parent_site_id,
                                            const unsigned int * child_site_id,
@@ -48,9 +48,9 @@ PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
                                const double * clvc,
                                const unsigned int * parent_scaler,
                                const unsigned int * child_scaler,
-                               double ** eigenvecs,
-                               double ** inv_eigenvecs,
-                               double ** freqs,
+                               double * const * eigenvecs,
+                               double * const * inv_eigenvecs,
+                               double * const * freqs,
                                double *sumtable,
                                const unsigned int * parent_site_id,
                                const unsigned int * child_site_id,
@@ -60,7 +60,7 @@ PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
   unsigned int use_bclv = ( bclv_buffer && (parent_sites < (sites * 2) / 3)); 
   core_update_sumtable = pll_core_update_sumtable_repeats_generic;
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX &&  PLL_STAT(avx_present))
   {
     core_update_sumtable = pll_core_update_sumtable_repeats_generic_avx;
     if (states == 4)
@@ -73,9 +73,23 @@ PLL_EXPORT int pll_core_update_sumtable_repeats(unsigned int states,
   }
 #endif
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE &&  PLL_STAT(sse3_present))
   {
     core_update_sumtable = pll_core_update_sumtable_repeats_generic_sse;
+  }
+#endif
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 &&  PLL_STAT(avx2_present))
+  {
+    core_update_sumtable = pll_core_update_sumtable_repeats_generic_avx2;
+    if (states == 4)
+    {
+      // avx is good enough
+      if (use_bclv)
+        core_update_sumtable = pll_core_update_sumtable_repeatsbclv_4x4_avx;
+      else
+        core_update_sumtable = pll_core_update_sumtable_repeats_4x4_avx;
+    }
   }
 #endif
 
@@ -207,9 +221,9 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_generic(unsigned int states,
                                            const double * clvc,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
                                            double *sumtable,
                                            const unsigned int * parent_site_id,
                                            const unsigned int * child_site_id,

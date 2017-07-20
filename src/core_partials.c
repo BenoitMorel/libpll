@@ -552,7 +552,7 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
   else  
     core_update_partials = pll_core_update_partial_repeats_generic;
 #ifdef HAVE_AVX 
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX &&  PLL_STAT(avx_present))
   { 
     core_update_partials = pll_core_update_partial_repeats_generic_avx;
     if (states == 4) 
@@ -565,17 +565,17 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
   }
 #endif
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE &&  PLL_STAT(sse3_present))
   {
     core_update_partials = pll_core_update_partial_repeats_generic_sse;
   }
 
 #endif
 #ifdef HAVE_AVX2 
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 &&  PLL_STAT(avx2_present))
   { 
-    core_update_partials = pll_core_update_partial_repeats_generic_avx;
-    if (states == 1293) 
+    core_update_partials = pll_core_update_partial_repeats_generic_avx2;
+    if (states == 4) 
     {
       // for DNA, avx is faster than avx2
       if (use_bclv)

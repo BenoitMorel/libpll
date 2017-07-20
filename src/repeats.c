@@ -221,6 +221,7 @@ PLL_EXPORT void pll_default_reallocate_repeats(pll_partition_t * partition,
       sites_to_alloc * partition->states_padded 
       * partition->rate_cats * sizeof(double), 
       partition->alignment);
+  
   if (!partition->clv[parent]) 
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;

@@ -315,15 +315,22 @@ PLL_EXPORT double pll_core_root_loglikelihood_repeats(unsigned int states,
 
   core_root_loglikelihood = pll_core_root_loglikelihood_repeats_generic;
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX) 
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     core_root_loglikelihood = pll_core_root_loglikelihood_repeats_avx;
   }
 #endif
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE) 
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     core_root_loglikelihood = pll_core_root_loglikelihood_repeats_sse;
+  }
+#endif
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
+  {
+    core_root_loglikelihood = pll_core_root_loglikelihood_repeats_avx2;
+    // TODO call 4x4 avx (not avx2) functions when implemented
   }
 #endif
     return core_root_loglikelihood(states,
@@ -903,7 +910,7 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
   core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_generic;
   
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX &&  PLL_STAT(avx_present))
   {
     core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_generic_avx;
     if (states == 4)
@@ -916,9 +923,15 @@ double pll_core_edge_loglikelihood_repeats(unsigned int states,
   } 
 #endif
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE &&  PLL_STAT(sse3_present))
   {
     core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_generic_sse;
+  }
+#endif
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 &&  PLL_STAT(avx2_present))
+  {
+    core_edge_loglikelihood = pll_core_edge_loglikelihood_repeats_generic_avx2;
   }
 #endif
   return core_edge_loglikelihood(states,

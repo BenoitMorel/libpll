@@ -214,9 +214,9 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_4x4_avx(unsigned int states,
                                            const double * clvc,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
                                            double *sumtable,
                                            const unsigned int * parent_site_id,
                                            const unsigned int * child_site_id,
@@ -406,9 +406,9 @@ PLL_EXPORT int pll_core_update_sumtable_repeatsbclv_4x4_avx( unsigned int states
                                            const double * clvc,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
                                            double *sumtable,
                                            const unsigned int * parent_site_id,
                                            const unsigned int * child_site_id,
@@ -476,8 +476,8 @@ PLL_EXPORT int pll_core_update_sumtable_repeatsbclv_4x4_avx( unsigned int states
       }
     tt_inv_eigenvecs_ptr[i] = tt_inv_eigenvecs_buff + i * states * states; 
   }
-  double **tt_inv_eigenvecs = tt_inv_eigenvecs_ptr;
-
+  double *const*tt_inv_eigenvecs = tt_inv_eigenvecs_ptr;
+  
   /* hack to avoid numerical deviations */
   if (inv) 
   {
@@ -646,9 +646,9 @@ PLL_EXPORT int pll_core_update_sumtable_repeats_generic_avx(unsigned int states,
                                            const double * clvc,
                                            const unsigned int * parent_scaler,
                                            const unsigned int * child_scaler,
-                                           double ** eigenvecs,
-                                           double ** inv_eigenvecs,
-                                           double ** freqs,
+                                           double * const * eigenvecs,
+                                           double * const * inv_eigenvecs,
+                                           double * const * freqs,
                                            double *sumtable,
                                            const unsigned int * parent_site_id,
                                            const unsigned int * child_site_id,
