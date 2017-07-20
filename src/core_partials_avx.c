@@ -1795,8 +1795,8 @@ PLL_EXPORT void pll_core_update_partial_repeats_generic_avx(unsigned int states,
         /* iterate over quadruples of columns */
         for (j = 0; j < states_padded; j += 4)
         {
-          v_lclv    = _mm256_load_pd(lclv+j);
-          v_rclv    = _mm256_load_pd(rclv+j);
+          v_lclv    = _mm256_loadu_pd(lclv+j);
+          v_rclv    = _mm256_loadu_pd(rclv+j);
 
           /* row 0 */
           v_mat    = _mm256_load_pd(lm0);

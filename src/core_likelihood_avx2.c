@@ -361,6 +361,7 @@ double pll_core_edge_loglikelihood_ii_avx2(unsigned int states,
   double site_lk, inv_site_lk;
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int span = rate_cats*states_padded;
 
   __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
 

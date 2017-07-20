@@ -571,6 +571,20 @@ PLL_EXPORT void pll_core_update_partial_repeats(unsigned int states,
   }
 
 #endif
+#ifdef HAVE_AVX2 
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  { 
+    core_update_partials = pll_core_update_partial_repeats_generic_avx;
+    if (states == 1293) 
+    {
+      // for DNA, avx is faster than avx2
+      if (use_bclv)
+        core_update_partials = pll_core_update_partial_repeatsbclv_4x4_avx;
+      else  
+        core_update_partials = pll_core_update_partial_repeats_4x4_avx;
+    }
+  }
+#endif
    core_update_partials(states,
                 parent_sites,
                 left_sites,
